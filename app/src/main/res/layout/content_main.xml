@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.v4.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+                                            xmlns:app="http://schemas.android.com/apk/res-auto"
+                                            xmlns:tools="http://schemas.android.com/tools"
+                                            android:layout_width="match_parent"
+                                            android:layout_height="match_parent"
+                                            app:layout_behavior="@string/appbar_scrolling_view_behavior"
+                                            tools:context="com.ytjojo.ui.MainActivity"
+                                            tools:showIn="@layout/activity_main"
+    >
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingBottom="@dimen/activity_vertical_margin"
+        android:paddingLeft="@dimen/activity_horizontal_margin"
+        android:paddingRight="@dimen/activity_horizontal_margin"
+        android:paddingTop="@dimen/activity_vertical_margin"
+        >
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Hello World!"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="800dp"
+            android:text="话接上文，在前一篇文章里面，咱们一起分析了“知乎”的回答详情页的需求，然后顺便用代码实现了下，忘了的可以再去看看【凯子哥带你夯实应用层】都说“知乎”逼格高，我们来实现“知乎”回答详情页动画效果 。其实在很多的界面效果中，这种“滚动”的效果能带来很多的惊喜，各种效果也很有搞头，说不定什么时候，Boss看着哪个界面好看，就让你去仿个过来，你要是说不会，那你下个月的工资还想发不！所以呢，今天这篇文章，就结合着一些案例，来稍微系统的总结一下Android系统中，如果要实现界面滚动，所涉及到的几个常用类。
+    Scroller和OverScroller，这两个是AndroidUI框架下实现滚动效果的最关键的类，ScrollView内部的实现也是使用的OverScroller，所以熟练的使用这两个类的相关API，可以让我们满足大部分的开发需求。
+    在View类里面，有两个和滚动相关的类，scrollTo()和scrollBy。这两个方法可以实现View内容的移动，注意，是内容，不是位置！是移动，不是滚动！什么叫做内容呢？比如说一个TextView，如果使用scrollTo()，那么移动的是里面的文字，而不是位置，scrollBy()也是一样的。那么为什么是移动，不是滚动呢？这是因为这两个方法完成的都是瞬间完成，即瞬移，而不是带有滚动过程的滚动，所以说，如果要实现效果比较好的滚动，光靠View自带的方法还是不行滴，还是要Scrollers出马~
+    但是！Scrollers并不是控制View进行滚动，包括内容或者是位置，实际上，Scrollers只是一个控件移动轨迹的辅助计算类，如果你想滚，他能帮你计算什么时间应该滚到什么位置，但是滚不滚，全靠你自觉~所以说，滚动位置由Scrollers计算出来了，我们在什么时候滚呢？滚多少呢？这时候，就要View的一个回调函数computeScroll()出马了。
+    我们看看View里面的computeScroll()做了些什么
+[java] view plaincopy在CODE上查看代码片派生到我的代码片
+            Scroller.computeScrollOffset方法是来判断滚动过程是否完成的,如果没有完成，就需要不停的scrollTo下去，所以在最后需要加一个invalidate(),这样可以再次触发computScroll,直到滚动已经结束。
+
+        其实说到这里，有的同学可能比较迷惑，OverScroller和Scroller有什么区别呢？事实上，这两个类都属于Scrollers，Scroller出现的比较早，在API1就有了，OverScroller是在API9才添加上的，出现的比较晚，所以功能比较完善，Over的意思就是超出，即OverScroller提供了对超出滑动边界的情况的处理，这两个类80%的API是一致的，OverScroller比Scroller添加了一下几个方法
+        ☞ isOverScrolled()
+        ☞ springBack(int startX, int startY, int minX, int maxX, int minY, int maxY)
+        ☞ fling(int startX, int startY, int velocityX, int velocityY, int minX, int maxX, int minY, int maxY, int overX, int overY)
+        ☞ notifyHorizontalEdgeReached(int startX, int finalX, int overX)
+        ☞ notifyVerticalEdgeReached(int startY, int finalY, int overY)"/>
+    </LinearLayout>
+</android.support.v4.widget.NestedScrollView>

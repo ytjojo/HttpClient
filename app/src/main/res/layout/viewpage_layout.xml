@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.ytjojo.widget.StickyNavLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                                   android:id="@+id/stickyLayout"
+                                   android:layout_width="match_parent"
+                                   android:layout_height="match_parent"
+                                   android:background="#FF0000"
+    >
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="400dp"
+        android:background="#ffee00"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_setDivision1"
+            android:text="头部"
+            android:gravity="center"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"/>
+        <TextView
+            android:id="@+id/tv_setDivision2"
+            android:text="头部1"
+            android:gravity="center"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"/>
+        <TextView
+            android:id="@+id/tv_setDivision3"
+            android:text="头部2"
+            android:gravity="center"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"/>
+        <TextView
+            android:id="@+id/tv_setDivision4"
+            android:text="头部3"
+            android:gravity="center"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"/>
+
+    </LinearLayout>
+    <android.support.v4.view.ViewPager
+        android:id="@+id/viewpager"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" >
+
+        <android.support.v4.view.PagerTabStrip
+            android:id="@+id/tabstrip"
+            android:layout_width="wrap_content"
+            android:layout_height="50dip"
+            android:gravity="center" />
+    </android.support.v4.view.ViewPager>
+
+</com.ytjojo.widget.StickyNavLayout>
