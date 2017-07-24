@@ -2,10 +2,9 @@ package com.ytjojo.http.subscriber;
 
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
-import retrofit2.adapter.rxjava.HttpException;
 import rx.Observable;
 import rx.functions.Func1;
 import rx.functions.Func2;
@@ -44,7 +43,7 @@ public class RetryWhenNetworkException implements Func1<Observable<? extends Thr
                     public Observable<?> call(Wrapper wrapper) {
                         if ((wrapper.throwable instanceof ConnectException
                                 || wrapper.throwable instanceof SocketTimeoutException
-                                || wrapper.throwable instanceof TimeoutException|| wrapper.throwable instanceof HttpException)
+                                || wrapper.throwable instanceof TimeoutException|| wrapper.throwable instanceof UnknownHostException)
                                 && wrapper.index < count + 1) { //如果超出重试次数也抛出错误，否则默认是会进入onCompleted
                             return Observable.timer(delay + (wrapper.index - 1) * increaseDelay, TimeUnit.MILLISECONDS);
                         }

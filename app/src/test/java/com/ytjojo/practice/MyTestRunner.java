@@ -1,12 +1,10 @@
 package com.ytjojo.practice;
 
-import com.lody.turbodex.TurboDex;
-
+import com.ytjojo.ui.MainActivity;
+import java.util.ArrayList;
 import org.junit.runners.model.InitializationError;
 import org.robolectric.RobolectricGradleTestRunner;
 import org.robolectric.internal.bytecode.InstrumentationConfiguration;
-
-import java.util.ArrayList;
 
 public class MyTestRunner  extends RobolectricGradleTestRunner {
 
@@ -26,8 +24,8 @@ public class MyTestRunner  extends RobolectricGradleTestRunner {
         /**
          * 添加要进行Shadow的对象
          */
-        builder.addInstrumentedPackage(TurboDex.class.getPackage().getName());
-        builder.addInstrumentedClass(TurboDex.class.getName());
+        builder.addInstrumentedPackage(MainActivity.class.getPackage().getName());
+        builder.addInstrumentedClass(MainActivity.class.getName());
 
         return builder.build();
     }

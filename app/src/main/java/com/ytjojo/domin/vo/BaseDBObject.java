@@ -1,22 +1,17 @@
 package com.ytjojo.domin.vo;
 
-import com.raizlabs.android.dbflow.annotation.Column;
-import com.raizlabs.android.dbflow.structure.BaseModel;
+import java.io.Serializable;
 
 /**
  * Created by Administrator on 2016/3/25 0025.
  */
-public class BaseDBObject extends BaseModel {
-    @Column
+public class BaseDBObject implements Serializable{
     public long addToDatabaseTime;
 
-    @Column
     public long dateBaseValidSecond;
 
-    @Column
     public long dateBaseFetchCount;
 
-    @Column
     public long lastDatabaseUpdateTime;
 
 

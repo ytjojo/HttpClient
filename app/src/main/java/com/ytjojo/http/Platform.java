@@ -3,9 +3,11 @@ package com.ytjojo.http;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-
-import com.zhy.http.okhttp.utils.L;
-
+import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.sql.Timestamp;
+import java.util.Date;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -15,7 +17,6 @@ public class Platform
 
     public static Platform get()
     {
-        L.e(PLATFORM.getClass().toString());
         return PLATFORM;
     }
 
@@ -65,5 +66,25 @@ public class Platform
         }
     }
 
+    private String generateTimestamp() {
+        Date date = new Date();
+        Timestamp timestamp = new Timestamp(date.getTime());
+        return String.valueOf(timestamp.getTime());
+    }
+
+    private static final int SIGNUM = 1;
+    private static final int BYTES = 1;
+    private String generateMarvelHash(String timeStamp, String privateKey, String publicKey) {
+
+        try {
+            MessageDigest messageDigest = MessageDigest.getInstance("MD5");
+            String marvelHash = timeStamp + privateKey + publicKey;
+            byte[] bytes = marvelHash.getBytes();
+            return new BigInteger(SIGNUM, messageDigest.digest(bytes)).toString(BYTES);
+
+        } catch (NoSuchAlgorithmException e) {
+            return "invalid";
+        }
+    }
 
 }

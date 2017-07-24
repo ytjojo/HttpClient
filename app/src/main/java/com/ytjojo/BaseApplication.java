@@ -5,17 +5,13 @@ import android.content.Context;
 import android.support.multidex.MultiDex;
 import android.util.Log;
 import android.widget.TextView;
-
-import com.antfortune.freeline.FreelineCore;
 import com.github.promeg.xlog_android.lib.XLogConfig;
-import com.lody.turbodex.TurboDex;
 import com.orhanobut.logger.Logger;
 import com.orhanobut.logger.Settings;
 import com.promegu.xlog.base.XLogMethod;
+import com.ytjojo.http.RetrofitClient;
 import com.ytjojo.practice.BuildConfig;
 import com.ytjojo.practice.R;
-import com.ytjojo.http.RetrofitClient;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,7 +37,6 @@ public class BaseApplication extends Application {
                         .setMethodOffset(0)
                         .setLogPriority(BuildConfig.DEBUG ? Log.VERBOSE : Log.ASSERT)
         );
-        FreelineCore.init(this);
     }
     public static BaseApplication getInstance(){
         return sInstance;
@@ -49,7 +44,6 @@ public class BaseApplication extends Application {
     @Override
     protected void attachBaseContext(Context base) {
         try{
-            TurboDex.enableTurboDex();
             MultiDex.install(this);
         }catch (Exception e){
 //            if(System.getenv("ROBOLECTRIC") == null) {

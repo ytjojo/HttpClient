@@ -15,5 +15,5 @@ import java.lang.annotation.Target;
 public @interface CacheKey {
     boolean keyByServiceMethod() default false;
     String value() default "";
-    Class<?> keyByClass() default Object.class;
+    Class<?> keyByClass() ;
 }

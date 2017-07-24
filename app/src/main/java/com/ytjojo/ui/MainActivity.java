@@ -109,7 +109,7 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(intent);
             }
         });
-//        login();
+        login();
     }
     RetrofitClient.GitApiInterface mGitApiInterface;
     public void setApi(RetrofitClient.GitApiInterface service){
@@ -140,7 +140,7 @@ public class MainActivity extends AppCompatActivity {
     }
     private void testArray(){
         RetrofitClient.GitApiInterface gitApiInterface =ProxyHandler.create(RetrofitClient.getRetrofit(),RetrofitClient.GitApiInterface.class);
-        gitApiInterface.loginWithArray("http://ngaribata.ngarihealth.com:8980/ehealth-base-feature3/*.jsonRequest",1).compose(ObservableCreator.applySchedulersIO()).subscribe(new Subscriber<OrganAddrArea>() {
+        gitApiInterface.loginWithArray("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/*.jsonRequest",1).compose(ObservableCreator.applySchedulersIO()).subscribe(new Subscriber<OrganAddrArea>() {
             @Override
             public void onCompleted() {
 

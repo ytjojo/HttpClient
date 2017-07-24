@@ -1,38 +1,37 @@
 package com.ytjojo.http;
 
 import android.content.Context;
-
+import com.google.gson.JsonObject;
 import com.ytjojo.BaseApplication;
 import com.ytjojo.domin.request.LoginRequest;
 import com.ytjojo.domin.response.OrganAddrArea;
 import com.ytjojo.domin.vo.LoginResponse;
-
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
 import okhttp3.logging.HttpLoggingInterceptor;
-import retrofit2.http.ArrayItem;
-import retrofit2.http.JsonAttr;
 import retrofit2.ProxyHandler;
 import retrofit2.Retrofit;
 import retrofit2.ServiceAndMethod;
 import retrofit2.adapter.rxjava.RxJavaCallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.http.ArrayItem;
 import retrofit2.http.Body;
 import retrofit2.http.Header;
+import retrofit2.http.Headers;
+import retrofit2.http.BodyJsonAttr;
 import retrofit2.http.Multipart;
 import retrofit2.http.POST;
 import retrofit2.http.Part;
 import retrofit2.http.PartMap;
 import retrofit2.http.Url;
 import rx.Observable;
-
 
 public class RetrofitClient {
     public static final String BASE_URL="http://192.168.0.46:8080";
@@ -59,7 +58,9 @@ public class RetrofitClient {
         mOkHttpClient = new OkHttpClient.Builder()
                 .addInterceptor(interceptor)
                 .retryOnConnectionFailure(true)
-                .connectTimeout(15, TimeUnit.SECONDS)
+                .connectTimeout(10, TimeUnit.SECONDS)
+                .readTimeout(10,TimeUnit.SECONDS)
+                .writeTimeout(10,TimeUnit.SECONDS)
                 .addNetworkInterceptor(new UserAgentInterceptor(""))
                 .build();
     }
@@ -135,15 +136,27 @@ public class RetrofitClient {
         Observable<Boolean> uploadImagePartMap(
                 @PartMap Map<String, RequestBody> params
         );
-        @POST("http://ngaribata.ngarihealth.com:8980/ehealth-base-feature3/logon/login")
-        Observable<LoginResponse> loginAttr(@JsonAttr("uid") String uid, @JsonAttr("pwd") String pwd, @JsonAttr("rid") String rid, @JsonAttr("forAccessToken") boolean forAccessToken);
-        @POST("http://ngaribata.ngarihealth.com:8980/ehealth-base-feature3/logon/login")
+        @POST("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/logon/login")
+        Observable<LoginResponse> loginAttr(@BodyJsonAttr("uid") String uid, @BodyJsonAttr("pwd") String pwd, @BodyJsonAttr("rid") String rid, @BodyJsonAttr("forAccessToken") boolean forAccessToken);
+        @POST("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/logon/login")
         Observable<LoginResponse> login(@Body LoginRequest request);
-        @POST("http://ngaribata.ngarihealth.com:8980/ehealth-base-feature3/logon/login")
+        @POST("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/logon/login")
         Observable<LoginResponse.UserRoles> loginRoles(@Body LoginRequest request);
         @POST()
         @ServiceAndMethod(method = "getOgranAddrArea",serviceId = "eh.organ")
         Observable<OrganAddrArea> loginWithArray(@Url String url, @ArrayItem int id );
+
+        @POST("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/*.jsonRequest")
+        @ServiceAndMethod(method = "getPatientNum",serviceId = "eh.relationDoctor")
+        Observable<JsonObject> getPatientNum(@ArrayItem int id );
+
+
+        @POST("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/*.jsonRequest")
+        @Headers({
+            "X-Service-Id:eh.relationDoctor",
+            "X-Service-Method:getPatientNum"
+        })
+        Observable<JsonObject> getPatientNumByHeader(@Body ArrayList<Integer> integers);
 
 //
 //        @Headers("User-Agent: Retrofit2.0Tutorial-App")

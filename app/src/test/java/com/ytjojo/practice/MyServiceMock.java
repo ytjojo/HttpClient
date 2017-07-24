@@ -1,18 +1,18 @@
 package com.ytjojo.practice;
 
+import com.google.gson.JsonObject;
 import com.ytjojo.domin.request.LoginRequest;
 import com.ytjojo.domin.response.OrganAddrArea;
 import com.ytjojo.domin.vo.LoginResponse;
 import com.ytjojo.http.RetrofitClient;
-
+import java.util.ArrayList;
 import java.util.Map;
-
 import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
 import retrofit2.http.ArrayItem;
 import retrofit2.http.Body;
+import retrofit2.http.BodyJsonAttr;
 import retrofit2.http.Header;
-import retrofit2.http.JsonAttr;
 import retrofit2.http.Part;
 import retrofit2.http.PartMap;
 import retrofit2.http.Url;
@@ -37,7 +37,7 @@ public class MyServiceMock implements RetrofitClient.GitApiInterface {
     }
 
     @Override
-    public Observable<LoginResponse> loginAttr(@JsonAttr("uid") String uid, @JsonAttr("pwd") String pwd, @JsonAttr("rid") String rid, @JsonAttr("forAccessToken") boolean forAccessToken) {
+    public Observable<LoginResponse> loginAttr(@BodyJsonAttr("uid") String uid, @BodyJsonAttr("pwd") String pwd, @BodyJsonAttr("rid") String rid, @BodyJsonAttr("forAccessToken") boolean forAccessToken) {
         return null;
     }
 
@@ -53,6 +53,14 @@ public class MyServiceMock implements RetrofitClient.GitApiInterface {
 
     @Override
     public Observable<OrganAddrArea> loginWithArray(@Url String url, @ArrayItem int id) {
+        return null;
+    }
+
+    @Override public Observable<JsonObject> getPatientNum(@ArrayItem int id) {
+        return null;
+    }
+
+    @Override public Observable<JsonObject> getPatientNumByHeader(@Body ArrayList<Integer> integers) {
         return null;
     }
 }

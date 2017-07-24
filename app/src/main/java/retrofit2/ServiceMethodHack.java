@@ -39,6 +39,7 @@ import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit2.http.ArrayItem;
 import retrofit2.http.Body;
+import retrofit2.http.BodyJsonAttr;
 import retrofit2.http.DELETE;
 import retrofit2.http.Field;
 import retrofit2.http.FieldMap;
@@ -48,7 +49,6 @@ import retrofit2.http.HEAD;
 import retrofit2.http.HTTP;
 import retrofit2.http.Header;
 import retrofit2.http.HeaderMap;
-import retrofit2.http.JsonAttr;
 import retrofit2.http.Multipart;
 import retrofit2.http.OPTIONS;
 import retrofit2.http.PATCH;
@@ -720,19 +720,23 @@ final class ServiceMethodHack<R, T> {
         }
         gotBody = true;
         return new ParameterHandler.Body<>(converter);
-      }else if(annotation instanceof ArrayItem ||annotation instanceof JsonAttr){
+      }else if(annotation instanceof ArrayItem ||annotation instanceof BodyJsonAttr){
         if (isFormEncoded || isMultipart) {
           throw parameterError(p,
                   "@Body parameters cannot be used with form or multi-part encoding.");
         }
+        if (gotBody) {
+          throw parameterError(p, "Multiple @Body method annotations found.");
+        }
+        gotUrl = true;
         if(annotation instanceof ArrayItem){
           return new AttrParameterHandler<>(null,type);
         }else{
-          String paramName = ((JsonAttr)annotation).value();
+          String paramName = ((BodyJsonAttr)annotation).value();
           this.isJsonAttrBody = true;
           if(TextUtils.isEmpty(paramName)){
             throw parameterError(p,
-                    "@JsonAttr parameters cannot be empty.");
+                    "@BodyJsonAttr parameters cannot be empty.");
           }
           return new AttrParameterHandler<>(paramName,type);
         }

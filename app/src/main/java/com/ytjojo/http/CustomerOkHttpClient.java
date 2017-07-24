@@ -1,12 +1,9 @@
 package com.ytjojo.http;
 
 import android.content.Context;
-
 import com.ytjojo.utils.TextUtils;
-import com.zhy.http.okhttp.log.LoggerInterceptor;
-
+import com.ytjojo.videoHttp.LoggerInterceptor;
 import java.io.IOException;
-
 import okhttp3.Cache;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
@@ -28,42 +25,6 @@ public class CustomerOkHttpClient {
         throw new UnsupportedOperationException("cannot be instantiated");
     }
 
-    static Interceptor mTokenInterceptor = new Interceptor() {
-        @Override
-        public Response intercept(Chain chain) throws IOException {
-            Request originalRequest = chain.request();
-            if (RetrofitClient.TOKEN == null || alreadyHasAuthorizationHeader(originalRequest)) {
-                return chain.proceed(originalRequest);
-            }
-            Request authorised = originalRequest.newBuilder()
-                    .header("Authorization", RetrofitClient.TOKEN)
-                    .build();
-            return chain.proceed(authorised);
-        }
-
-
-    };
-    static Interceptor mTokenInterceptor1 = new Interceptor() {
-        @Override
-        public Response intercept(Chain chain) throws IOException {
-            Request originalRequest = chain.request();
-            if (RetrofitClient.TOKEN == null || alreadyHasAuthorizationHeader(originalRequest)) {
-                return chain.proceed(originalRequest);
-            }
-            Request authorised = originalRequest.newBuilder()
-                    .header(RetrofitClient.TOKEN_HEADER_KEY, RetrofitClient.TOKEN)
-                    .build();
-            return chain.proceed(authorised);
-        }
-
-
-    };
-
-    private static boolean alreadyHasAuthorizationHeader(Request originalRequest) {
-
-
-        return false;
-    }
 
     static Interceptor cacheInterceptor = new Interceptor() {
         @Override
@@ -94,7 +55,6 @@ public class CustomerOkHttpClient {
         // add logging as last interceptor
         client = new OkHttpClient.Builder()
                 .addNetworkInterceptor(cacheInterceptor)
-                .addInterceptor(mTokenInterceptor1)
                 .addInterceptor(new LoggerInterceptor("Request",true))
 //                .addInterceptor(logging)
 //                .cache(cache)
@@ -112,4 +72,5 @@ public class CustomerOkHttpClient {
     public static OkHttpClient getClient(){
         return client;
     }
+
 }

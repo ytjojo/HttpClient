@@ -22,6 +22,7 @@ public class LoginResponse extends ResponseWrapper<LoginResponse.UserRoles> {
         public void setAccessToken(String accessToken)
         {
             this.accessToken = accessToken;
+            System.out.println("accessToken = " + accessToken);
         }
 
         public String getAccessToken()

@@ -8,6 +8,7 @@ import com.ytjojo.http.exception.APIException;
 
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.util.concurrent.TimeoutException;
 
 import rx.Subscriber;
@@ -31,7 +32,7 @@ public abstract class BaseSubscriber<T> extends Subscriber<T> {
             e = throwable;
             throwable = throwable.getCause();
         }
-        if (e instanceof ConnectException || e instanceof SocketTimeoutException || e instanceof TimeoutException) {
+        if (e instanceof ConnectException || e instanceof SocketTimeoutException || e instanceof TimeoutException||e instanceof UnknownHostException) {
             onNetworkException(e);
         } else if (e instanceof APIException) {
             onAPIException((APIException) e);

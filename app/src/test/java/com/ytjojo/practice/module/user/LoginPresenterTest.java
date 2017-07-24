@@ -23,10 +23,10 @@ public class LoginPresenterTest {
         RetrofitClient.GitApiInterface gitApiInterface= Mockito.mock(RetrofitClient.GitApiInterface.class);
         LoginPresenter loginPresenter =new LoginPresenter();
         loginPresenter.setApiService(gitApiInterface);
-        loginPresenter.login("18668436182","123456");
+        loginPresenter.login("18668436182","27483X");
         LoginRequest request = new LoginRequest();
         request.uid="18668436182";
-        request.pwd = "123456";
+        request.pwd = "27483X";
         Mockito.verify(gitApiInterface).login(request);
 
     }

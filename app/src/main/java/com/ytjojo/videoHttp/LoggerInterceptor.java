@@ -20,7 +20,7 @@ import okio.Buffer;
  */
 public class LoggerInterceptor implements Interceptor
 {
-    public static final String TAG = "OkHttpUtils";
+    public static final String TAG = "HTTP";
     private String tag;
     private boolean showResponse;
 
