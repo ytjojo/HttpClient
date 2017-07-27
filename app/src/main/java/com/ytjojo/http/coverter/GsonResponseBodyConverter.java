@@ -19,18 +19,16 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.TypeAdapter;
+import com.google.gson.internal.$Gson$Types;
 import com.ytjojo.http.ResponseWrapper;
 import com.ytjojo.http.exception.APIException;
 import com.ytjojo.http.exception.AuthException;
 import com.ytjojo.utils.TextUtils;
 import java.io.IOException;
-import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import okhttp3.ResponseBody;
 import okio.BufferedSource;
 import okio.Okio;
-import org.json.JSONException;
-import org.json.JSONObject;
 import retrofit2.Converter;
 
 final class GsonResponseBodyConverter<T> implements Converter<ResponseBody, T> {
@@ -53,44 +51,34 @@ final class GsonResponseBodyConverter<T> implements Converter<ResponseBody, T> {
 			throw new APIException(-3, "response is null");
 		}
 
-		try {
-			JsonElement root = mGson.fromJson(value, JsonElement.class);
-			JsonObject response = root.getAsJsonObject();
+		JsonElement root = mGson.fromJson(value, JsonElement.class);
+		JsonObject response = root.getAsJsonObject();
 
-			int code = response.get("code").getAsInt();
-			JsonElement msgJE = response.get("msg");
-			String msg = msgJE == null ? null : msgJE.getAsString();
-			if (code != ResponseWrapper.RESULT_OK) {
-				if (code == ResponseWrapper.EXCEPTION_TOKEN_NOTVALID) {
-					throw new AuthException(code, msg);
-				} else {
-					//返回的code不是RESULT_OK时Toast显示msg
-					throw new APIException(code, msg, value);
-				}
+		int code = response.get("code").getAsInt();
+		JsonElement msgJE = response.get("msg");
+		String msg = msgJE == null ? null : msgJE.getAsString();
+		if (code != ResponseWrapper.RESULT_OK) {
+			if (code == ResponseWrapper.EXCEPTION_TOKEN_NOTVALID) {
+				throw new AuthException(code, msg);
+			} else {
+				//返回的code不是RESULT_OK时Toast显示msg
+				throw new APIException(code, msg, value);
 			}
-			if (type instanceof Class) {
-				if (type == String.class) {
-					return (T) value;
-				}
-				if (type == JsonObject.class) {
-					//如果返回结果是JSONObject则无需经过Gson
-					return (T)(response);
-				}
-			} else if (type instanceof ParameterizedType) {
-				ParameterizedType parameterizedType = (ParameterizedType) type;
-				if (parameterizedType.getRawType() == ResponseWrapper.class) {
-					String data = response.get("body").getAsString();
-					Type dataType = parameterizedType.getActualTypeArguments()[0];
-					if (dataType == JSONObject.class) {
-						return (T) new ResponseWrapper<>(code, msg, new JSONObject(data));
-					}
-					return mGson.fromJson(value, type);
-				}
-			}
-			return mGson.fromJson(value, type);
-		} catch (JSONException e) {
-			//服务端返回的不是JSON，服务端出问题
-			throw new APIException(ResponseWrapper.EXCEPTION_CCONVERT_JSON, "", value);
 		}
+		if (type instanceof Class) {
+			if (type == String.class) {
+				return (T) value;
+			}
+			if (type == JsonObject.class) {
+				//如果返回结果是JSONObject则无需经过Gson
+				return (T)(response);
+			}
+			if(!(ResponseWrapper.class.isAssignableFrom((Class<?>) type))){
+				Type wrapperType = $Gson$Types.newParameterizedTypeWithOwner(null,ResponseWrapper.class,type);
+				ResponseWrapper<?> wrapper = mGson.fromJson(value, wrapperType);
+				return (T) wrapper.body;
+			}
+		}
+		return mGson.fromJson(value, type);
 	}
 }

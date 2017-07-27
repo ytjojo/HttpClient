@@ -63,4 +63,13 @@ public class MyServiceMock implements RetrofitClient.GitApiInterface {
     @Override public Observable<JsonObject> getPatientNumByHeader(@Body ArrayList<Integer> integers) {
         return null;
     }
+
+    @Override
+    public Observable<JsonObject> getAddrArea(@ArrayItem String arg, @ArrayItem int areaCode) {
+        return null;
+    }
+
+    @Override public Observable<JsonObject> getHealthCardTypeDict() {
+        return null;
+    }
 }

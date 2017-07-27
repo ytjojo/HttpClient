@@ -12,7 +12,6 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
-import com.google.gson.JsonSyntaxException;
 import com.google.gson.TypeAdapter;
 import com.google.gson.TypeAdapterFactory;
 import com.google.gson.annotations.Expose;
@@ -21,8 +20,6 @@ import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
-import com.ytjojo.utils.TypeUtils;
-
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Type;
@@ -51,7 +48,7 @@ public class GsonAdapter {
             // TODO Auto-generated method stub
             if (reader.peek() == JsonToken.NULL) {
                 reader.nextNull();
-                return "";
+                return null;
             }
             return reader.nextString();
         }
@@ -73,8 +70,7 @@ public class GsonAdapter {
             @Override
             public void write(JsonWriter out, String value) throws IOException {
                 if (value == null) {
-                    // out.nullValue();
-                    out.value(""); // 序列化时将 null 转为 ""
+                     out.nullValue();
                 } else {
                     out.value(value);
                 }
@@ -150,37 +146,7 @@ public class GsonAdapter {
 
     private static final Charset UTF_8 = Charset.forName("UTF-8");
 
-    public static String toJson(Gson gson, Object value) {
-        return gson.toJson(value);
-    }
-    public static String toJson(Gson gson, Object value,Type type) {
 
-        return gson.toJson(value,type);
-    }
-
-    /**
-     * Json字符串 转为指定对象
-     *
-     * @param json json字符串
-     * @param type 对象类型
-     * @param <T>  对象类型
-     * @return
-     * @throws JsonSyntaxException
-     */
-    public static <T> T toBean(Gson gson, String json, Class<T> type) {
-        try {
-            Type genType = type.getGenericSuperclass();
-            if (genType ==null ||genType instanceof Class) {
-                return gson.fromJson(json, type);
-            }
-            Type knowType = TypeUtils.canonicalize(genType);
-            T obj = gson.fromJson(json, knowType);
-            return obj;
-        } catch (JsonSyntaxException e) {
-
-        }
-        return null;
-    }
 
     public static Gson getSerializationExclusionGson(){
        return new GsonBuilder()

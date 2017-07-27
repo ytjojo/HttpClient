@@ -6,6 +6,7 @@ import com.ytjojo.BaseApplication;
 import com.ytjojo.domin.request.LoginRequest;
 import com.ytjojo.domin.response.OrganAddrArea;
 import com.ytjojo.domin.vo.LoginResponse;
+import com.ytjojo.http.coverter.GsonConverterFactory;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,12 +21,12 @@ import retrofit2.ProxyHandler;
 import retrofit2.Retrofit;
 import retrofit2.ServiceAndMethod;
 import retrofit2.adapter.rxjava.RxJavaCallAdapterFactory;
-import retrofit2.converter.gson.GsonConverterFactory;
 import retrofit2.http.ArrayItem;
 import retrofit2.http.Body;
+import retrofit2.http.BodyJsonAttr;
+import retrofit2.http.GET;
 import retrofit2.http.Header;
 import retrofit2.http.Headers;
-import retrofit2.http.BodyJsonAttr;
 import retrofit2.http.Multipart;
 import retrofit2.http.POST;
 import retrofit2.http.Part;
@@ -143,6 +144,11 @@ public class RetrofitClient {
         @POST("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/logon/login")
         Observable<LoginResponse.UserRoles> loginRoles(@Body LoginRequest request);
         @POST()
+        @Headers({
+            "CHACHE_DYNAMIC_KEY:11",
+            "CHACHE_DYNAMIC_KEY_GROUP:sdw",
+            "CACHEINTERCEPTOR_CACHE_TIME:36000"
+        })
         @ServiceAndMethod(method = "getOgranAddrArea",serviceId = "eh.organ")
         Observable<OrganAddrArea> loginWithArray(@Url String url, @ArrayItem int id );
 
@@ -157,16 +163,18 @@ public class RetrofitClient {
             "X-Service-Method:getPatientNum"
         })
         Observable<JsonObject> getPatientNumByHeader(@Body ArrayList<Integer> integers);
+        @POST("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/*.jsonRequest")
+        @Headers({
+            "X-Service-Id:eh.unLoginSevice",
+            "X-Service-Method:getAddrArea",
+            "CHACHE_DYNAMIC_KEY:getAddrArea",
+            "CHACHE_DYNAMIC_KEY_GROUP:eh.unLoginSevice",
+            "CACHEINTERCEPTOR_CACHE_TIME:60"
+        })
+        Observable<JsonObject> getAddrArea(@ArrayItem String arg,@ArrayItem int areaCode );
+        @GET("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/eh.mpi.dictionary.PatientType.dic?limit=0")
+        Observable<JsonObject> getHealthCardTypeDict();
 
-//
-//        @Headers("User-Agent: Retrofit2.0Tutorial-App")
-//        @GET("/search/users")
-//        Call<GitResult> getUsersNamedTom(@Query("q") String name);
-//
-//        @POST("/user/create")
-//        Call<Item> createUser(@Body String name, @Body String email);
-//
-//        @PUT("/user/{id}/update")
-//        Call<Item> updateUser(@Path("id") String id , @Body Item user);
+
     }
 }

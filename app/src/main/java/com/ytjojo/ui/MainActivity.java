@@ -20,16 +20,15 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
-
+import com.google.gson.JsonObject;
 import com.orhanobut.logger.Logger;
 import com.ytjojo.domin.request.LoginRequest;
 import com.ytjojo.domin.response.OrganAddrArea;
 import com.ytjojo.domin.vo.LoginResponse;
-import com.ytjojo.practice.R;
 import com.ytjojo.http.RetrofitClient;
+import com.ytjojo.practice.R;
 import com.ytjojo.rx.ObservableCreator;
 import com.ytjojo.utils.DensityUtil;
-
 import retrofit2.ProxyHandler;
 import rx.Subscriber;
 
@@ -87,6 +86,9 @@ public class MainActivity extends AppCompatActivity {
         toolbar.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                //testGetDic();
+                //testArray();
+                getAddrArea();
                 if ((mDecorView.getSystemUiVisibility() & View.SYSTEM_UI_FLAG_HIDE_NAVIGATION) == 0){
                     hideSystemUI();
 
@@ -134,11 +136,53 @@ public class MainActivity extends AppCompatActivity {
 
                 RetrofitClient.TOKEN = response.properties.getAccessToken();
 //                RetrofitClient.TOKEN = loginResponse.properties.getAccessToken();
-                testArray();
+//                testArray();
+//                testGetDic();
             }
         });
     }
+    private void getAddrArea() {
+        RetrofitClient.GitApiInterface gitApiInterface =ProxyHandler.create(RetrofitClient.getRetrofit(),RetrofitClient.GitApiInterface.class);
+        LoginRequest request = new LoginRequest();
+        gitApiInterface.getAddrArea(null,0).compose(ObservableCreator.applySchedulersIO()).subscribe(new Subscriber<JsonObject>() {
+            @Override
+            public void onCompleted() {
+
+            }
+
+            @Override
+            public void onError(Throwable e) {
+                Log.e("onError",e.getMessage());
+                e.printStackTrace();
+                Log.e("onError",e.getMessage());
+            }
+
+            @Override
+            public void onNext(JsonObject response) {
+
+                Logger.e( response.toString());
+            }
+        });
+    }
+    private void testGetDic(){
+        RetrofitClient.GitApiInterface gitApiInterface =ProxyHandler.create(RetrofitClient.getRetrofit(),RetrofitClient.GitApiInterface.class);
+        gitApiInterface.getHealthCardTypeDict().compose(ObservableCreator.applySchedulersIO()).subscribe(new Subscriber<JsonObject>() {
+            @Override public void onCompleted() {
+
+            }
+
+            @Override public void onError(Throwable e) {
+
+            }
+
+            @Override public void onNext(JsonObject jsonObject) {
+               Log.e("get", jsonObject.toString());
+            }
+        });
+    }
+    long mBegin;
     private void testArray(){
+        mBegin = System.currentTimeMillis();
         RetrofitClient.GitApiInterface gitApiInterface =ProxyHandler.create(RetrofitClient.getRetrofit(),RetrofitClient.GitApiInterface.class);
         gitApiInterface.loginWithArray("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/*.jsonRequest",1).compose(ObservableCreator.applySchedulersIO()).subscribe(new Subscriber<OrganAddrArea>() {
             @Override
@@ -148,12 +192,13 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onError(Throwable e) {
-
+                e.printStackTrace();
+                Log.e("onError",e.getMessage());
             }
 
             @Override
             public void onNext(OrganAddrArea organAddrArea) {
-                Logger.e(organAddrArea.addrArea + "   "+ organAddrArea.bankText);
+                Logger.e(organAddrArea.addrArea + "   "+ organAddrArea.addrAreaText+((System.currentTimeMillis()-mBegin)));
             }
         });
     }

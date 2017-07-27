@@ -81,12 +81,9 @@ final class ServiceMethodHack<R, T> {
   private final boolean isFormEncoded;
   private final boolean isMultipart;
   private final ParameterHandler<?>[] parameterHandlers;
-  private ArrayList<AttrParameterHandler<?>> mAttrParameterHandlers ;
+  private final ArrayList<Annotation> annotations;
+  private ArrayList<MoreParameterHandler<?>> mMoreParameterHandlers;
   private ParameterMerge mParameterMerge;
-  private String jsonServiceId;
-  private String jsonMethod;
-  private boolean isArrayBodyPost;
-  private boolean isJsonAttrBody;
   ServiceMethodHack(Builder<R, T> builder) {
     this.callFactory = builder.retrofit.callFactory();
     this.callAdapter = builder.callAdapter;
@@ -100,17 +97,8 @@ final class ServiceMethodHack<R, T> {
     this.isFormEncoded = builder.isFormEncoded;
     this.isMultipart = builder.isMultipart;
     this.parameterHandlers = builder.parameterHandlers;
-    this.jsonServiceId = builder.jsonServiceId;
-    this.jsonMethod = builder.jsonMethod;
-    this.isJsonAttrBody = builder.isJsonAttrBody;
-    if((!TextUtils.isEmpty(jsonServiceId) && !TextUtils.isEmpty(jsonMethod))){
-      this.isArrayBodyPost = true;
-      mParameterMerge = new ParameterMerge();
-      mParameterMerge.setServiceIdAndMethod(jsonServiceId,jsonMethod);
-    }
-    if(isJsonAttrBody){
-      mParameterMerge = new ParameterMerge();
-    }
+    this.annotations = builder.annotations;
+    mParameterMerge = new ParameterMerge();
   }
 
   /** Builds an HTTP request from method arguments. */
@@ -126,18 +114,19 @@ final class ServiceMethodHack<R, T> {
       throw new IllegalArgumentException("Argument count (" + argumentCount
           + ") doesn't match expected count (" + handlers.length + ")");
     }
+    if(mMoreParameterHandlers !=null){
+      mMoreParameterHandlers.clear();
+    }
     for (int p = 0; p < argumentCount; p++) {
-      if(handlers[p] instanceof AttrParameterHandler<?>){
-        if(mAttrParameterHandlers ==null){
-          mAttrParameterHandlers = new ArrayList<>();
+      if(handlers[p] instanceof MoreParameterHandler<?>){
+        if(mMoreParameterHandlers ==null){
+          mMoreParameterHandlers = new ArrayList<>();
         }
-        mAttrParameterHandlers.add((AttrParameterHandler<?>) handlers[p]);
+        mMoreParameterHandlers.add((MoreParameterHandler<?>) handlers[p]);
       }
       handlers[p].apply(requestBuilder, args[p]);
     }
-    if(mParameterMerge !=null){
-      mParameterMerge.merge(requestBuilder,mAttrParameterHandlers);
-    }
+    mParameterMerge.merge(requestBuilder,annotations, mMoreParameterHandlers);
     return requestBuilder.build();
   }
 
@@ -169,7 +158,6 @@ final class ServiceMethodHack<R, T> {
     boolean hasBody;
     boolean isFormEncoded;
     boolean isMultipart;
-    boolean isJsonAttrBody;
     String relativeUrl;
     Headers headers;
     MediaType contentType;
@@ -177,8 +165,7 @@ final class ServiceMethodHack<R, T> {
     ParameterHandler<?>[] parameterHandlers;
     Converter<ResponseBody, T> responseConverter;
     CallAdapter<T, R> callAdapter;
-    String jsonServiceId;
-    String jsonMethod;
+    ArrayList<Annotation> annotations;
     public Builder(Retrofit retrofit, Method method) {
       this.retrofit = retrofit;
       this.method = method;
@@ -304,13 +291,11 @@ final class ServiceMethodHack<R, T> {
           throw methodError("Only one encoding annotation is allowed.");
         }
         isFormEncoded = true;
-      } else if(annotation instanceof ServiceAndMethod){
-        jsonServiceId =((ServiceAndMethod) annotation).serviceId();
-        jsonMethod =((ServiceAndMethod) annotation).method();
-        if(TextUtils.isEmpty(jsonServiceId)||TextUtils.isEmpty(jsonMethod)){
-          throw methodError("method or serviceId null.");
+      } else {
+        if(annotations ==null){
+          annotations = new ArrayList<>();
         }
-
+        annotations.add(annotation);
       }
     }
 
@@ -730,15 +715,14 @@ final class ServiceMethodHack<R, T> {
         }
         gotUrl = true;
         if(annotation instanceof ArrayItem){
-          return new AttrParameterHandler<>(null,type);
+          return new MoreParameterHandler<>(null,type,annotation);
         }else{
           String paramName = ((BodyJsonAttr)annotation).value();
-          this.isJsonAttrBody = true;
           if(TextUtils.isEmpty(paramName)){
             throw parameterError(p,
                     "@BodyJsonAttr parameters cannot be empty.");
           }
-          return new AttrParameterHandler<>(paramName,type);
+          return new MoreParameterHandler<>(paramName,type,annotation);
         }
 
       }
