@@ -14,13 +14,16 @@ public class APIException extends RuntimeException{
     private static final int SERVICE_UNAVAILABLE = 503;
     private static final int GATEWAY_TIMEOUT = 504;
     public int code;
-    public String reponse;
     public APIException(int code, String msg,String reponse) {
         super(msg);
-        this.reponse = reponse;
     }
     public APIException(int code, String msg) {
         super(msg);
+        this.code = code;
+    }
+    public APIException(int code, String msg,Throwable throwable) {
+        super(msg,throwable);
+        this.code = code;
     }
     public int getCode(){
         return code;

@@ -34,9 +34,14 @@ public final class CacheInterceptor implements Interceptor {
   public static final String HEADER_CACHE_TIME  = "CACHEINTERCEPTOR_CACHE_TIME";
 
 	final Cache cache;
+  private boolean forceKey=true;
 
   public CacheInterceptor(Cache cache) {
     this.cache = cache;
+  }
+  public CacheInterceptor(Cache cache,boolean forceKey) {
+    this.cache = cache;
+    this.forceKey = forceKey;
   }
 
   @Override public Response intercept(Chain chain) throws IOException {
@@ -47,7 +52,7 @@ public final class CacheInterceptor implements Interceptor {
     String dynamicKey = request.header(HEADER_DYNAMIC_KEY);
     String dynamicKeyGroup = request.header(HEADER_DYNAMIC_KEY_GROUP);
     String cachetTime = request.header(HEADER_CACHE_TIME);
-    if(dynamicKeyGroup ==null && dynamicKey ==null){
+    if(forceKey &&(dynamicKeyGroup ==null && dynamicKey ==null)){
       return chain.proceed(request);
     }
     Response cacheCandidate = cache != null

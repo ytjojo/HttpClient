@@ -1,22 +1,26 @@
 package com.ytjojo.http;
 
 import android.content.Context;
+import android.support.v4.util.Pair;
 import com.google.gson.JsonObject;
 import com.ytjojo.BaseApplication;
 import com.ytjojo.domin.request.LoginRequest;
 import com.ytjojo.domin.response.OrganAddrArea;
 import com.ytjojo.domin.vo.LoginResponse;
 import com.ytjojo.http.coverter.GsonConverterFactory;
+import com.ytjojo.http.https.HttpsDelegate;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.X509TrustManager;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
-import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.ProxyHandler;
 import retrofit2.Retrofit;
 import retrofit2.ServiceAndMethod;
@@ -36,42 +40,107 @@ import rx.Observable;
 
 public class RetrofitClient {
     public static final String BASE_URL="http://192.168.0.46:8080";
-    public static volatile   String TOKEN;
+    public static volatile  String TOKEN;
     public static  final String TOKEN_HEADER_KEY = "X-Access-Token";
-    public static  final String AUTHTYPE_HEADER_KEY = "Auth_Type";
-    public static  final String AUTHTYPE_TOKEN = "Auth_Type_Token";
-    public static  final String AUTHTYPE_BASIC = "Auth_Type_Basic";
     public static  final String ContentType_JSON = "application/json";
     public static  final String ContentType_FORM = "application/x-www-form-urlencoded; charset=UTF-8";
     public static final int HTTP_RESPONSE_DISK_CACHE_MAX_SIZE=10 * 1024 * 1024;
-    private static Retrofit retrofit ;
+    private Retrofit retrofit ;
     static OkHttpClient mOkHttpClient;
-    public static void configClient(){
-        // Base directory recommended by http://stackoverflow.com/a/32752861/400717.
-//        final File baseDir = context.getCacheDir();
-//        if (baseDir != null) {
-//            final File cacheDir = new File(baseDir, "HttpResponseCache");
-//            new Cache(cacheDir, HTTP_RESPONSE_DISK_CACHE_MAX_SIZE);
-//        }
-
-        HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
-        interceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
-        mOkHttpClient = new OkHttpClient.Builder()
-                .addInterceptor(interceptor)
-                .retryOnConnectionFailure(true)
-                .connectTimeout(10, TimeUnit.SECONDS)
-                .readTimeout(10,TimeUnit.SECONDS)
-                .writeTimeout(10,TimeUnit.SECONDS)
-                .addNetworkInterceptor(new UserAgentInterceptor(""))
-                .build();
+    public RetrofitClient(Retrofit retrofit){
+        this.retrofit = retrofit;
     }
+    public void clearCached(){
+        try {
+            mOkHttpClient.cache().delete();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    public static void init(Context c){
 
+    }
+    public static Builder newBuilder(Context context){
+        return new Builder(context);
+    }
+    public static class Builder{
+        Context context;
+        String baseUrl;
+        HashMap<String,String> headers;
+        int writeTimeout;
+        int readTimeout;
+        int connectTimeout;
+        private Pair<SSLSocketFactory, X509TrustManager> sslFactory;
 
+        public Builder(Context context){
+           this.context =  context.getApplicationContext();
+        }
+        public Builder baseUrl(String baseUrl){
+            this.baseUrl = baseUrl;
+            return this;
+        }
+        public Builder headers(HashMap<String,String> headers){
+            this.headers = headers;
+            return this;
+        }
+        public Builder writeTimeout(int writeTimeout){
+            this.writeTimeout = writeTimeout;
+            return this;
+        }
+        public Builder readTimeout(int readTimeout){
+            this.readTimeout = readTimeout;
+            return this;
+        }
+        public Builder connectTimeout(int connectTimeout){
+            this.connectTimeout = connectTimeout;
+            return this;
+        }
+
+        /**
+         * 信任所有证书,不安全有风险
+         *
+         * @return
+         */
+        public Builder unsafeSSLSocketFactory(){
+           this.sslFactory =  HttpsDelegate.getUnsafeSslSocketFactory();
+
+            return this;
+        }
+        /**
+         * 使用预埋证书，校验服务端证书（自签名证书）
+         * @return
+         */
+        public Builder unsafeSSLSocketFactory(InputStream[] certificates){
+           this.sslFactory =  HttpsDelegate.getUnsafeSslSocketFactory(certificates);
+            return this;
+        }
+
+        /**
+         *  使用bks证书和密码管理客户端证书（双向认证），使用预埋证书，校验服务端证书（自签名证书）
+         * @param certificates
+         * @param bksFile
+         * @param password
+         * @return
+         */
+        public Builder safeSSLSocketFactory(InputStream[] certificates, InputStream bksFile, String password){
+           this.sslFactory =  HttpsDelegate.getSslSocketFactory(certificates,bksFile,password);
+            return this;
+        }
+        public RetrofitClient build(){
+                Retrofit  retrofit = new Retrofit.Builder()
+                .baseUrl(baseUrl)
+                .client(OkHttpClientBuilder.builder(context).build())
+                .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+            return new RetrofitClient(retrofit);
+        }
+    }
 
     private static void create(Context c){
         retrofit = new Retrofit.Builder()
                 .baseUrl(BASE_URL)
-                .client(CustomerOkHttpClient.getInitClient(c.getApplicationContext()))
+                .client(OkHttpClientBuilder.builder(c.getApplicationContext()).build())
                 .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
@@ -83,16 +152,7 @@ public class RetrofitClient {
         return ProxyHandler.create(retrofit,service);
     }
 
-    public static Retrofit getRetrofit(Context c) {
-        if(retrofit == null){
-            create(c);
-        }
-        return retrofit;
-    }
 
-    public static Retrofit getRetrofit() {
-        return retrofit;
-    }
     public void uploadByPartmap(String token,String catalog, int mode, String id, File file, HashMap<String,String> params){
 
         RequestBody catalogRB = RequestBody.create(null, catalog);

@@ -1,48 +1,38 @@
-package com.ytjojo.repertory;
+package com.ytjojo.http;
 
-import com.ytjojo.http.RetrofitClient;
 import com.ytjojo.http.exception.AuthException;
 import com.ytjojo.http.exception.TokenInvalidException;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import retrofit2.ProxyHandler;
 import rx.Observable;
+import rx.Subscriber;
 import rx.functions.Action1;
 import rx.functions.Func1;
 import rx.schedulers.Schedulers;
 
-public class ProxyHandler implements InvocationHandler {
+public abstract class TokenRefreshHandler {
 
 
-    private final long MIN_UPDATEDELAY = 30000 ;
-    private boolean isTokenAreadyUpdate;
-
-    public ProxyHandler(Object object){
-        this.mObject = object;
-    }
-
-    private Object mObject;
-
-    public void setObject(Object obj) {
-        this.mObject = obj;
-    }
-
-    @Override
-    public Object invoke(Object proxy, final Method method, final Object[] args) throws Throwable {
-        return null;
-    }
+    private volatile boolean isTokenAreadyUpdate;
 
 
     Throwable mAuthThrwable;
 
-    public <T> Observable<T> getObservable(T value){
-        return Observable.just(true)
-            .flatMap(new Func1<Object, Observable<T>>() {
-                @Override
-                public Observable<T> call(Object o) {
-                    return Observable.just(value);
+    public <T> Observable<T> getObservable(Callable<T> callable){
+       Observable<T> observable = Observable.create(new Observable.OnSubscribe<T>() {
+            @Override public void call(Subscriber<? super T> subscriber) {
+                try {
+                    T value =  callable.call();
+                    subscriber.onNext(value);
+
+                } catch (Exception e) {
+                    subscriber.onError(e);
+                    e.printStackTrace();
                 }
-            }).retryWhen(getRetryFunc1(), Schedulers.trampoline());
+            }
+        });
+        return observable.retryWhen(getRetryFunc1());
     }
 
     private Func1<Observable<? extends Throwable>, Observable<?>> getRetryFunc1(){
@@ -60,6 +50,8 @@ public class ProxyHandler implements InvocationHandler {
                 });
             }
             private Observable<?> checkApiError(Throwable throwable) {
+                retryCount++;
+                System.out.println(retryCount+"retryCount--"+Thread.currentThread().getName());
                 if (throwable instanceof TokenInvalidException) {
                     return checkTokenUpdating();
                 } else {
@@ -92,12 +84,16 @@ public class ProxyHandler implements InvocationHandler {
                             if (mAuthThrwable != null) {
                                 return  Observable.error(mAuthThrwable);
                             } else {
+                                if(retryCount >maxRetryCount){
+                                    return  Observable.error(new AuthException(-100,"token超时"));
+                                }
                                 return Observable.just(true);
                             }
                         }else {
-                            if(retryCount++<maxRetryCount){
+                            System.out.println(retryCount+"retryCount"+Thread.currentThread().getName());
+                            if(retryCount<maxRetryCount){
                                 return Observable.timer(retryCount * retryDelaySecond,
-                                        TimeUnit.SECONDS);
+                                        TimeUnit.SECONDS).observeOn(Schedulers.io());
                             }else{
                                 return Observable.error(new AuthException(-100,"token超时"));
                             }
@@ -105,9 +101,10 @@ public class ProxyHandler implements InvocationHandler {
                         }
                     }
                 }
-                if(retryCount++<maxRetryCount){
-//                        return  Observable.timer(retryCount * retryDelaySecond,
-//                                TimeUnit.SECONDS);
+
+                if(retryCount<maxRetryCount){
+                        //return  Observable.timer(retryCount * retryDelaySecond,
+                        //        TimeUnit.SECONDS);
                     return Observable.just(true);
                 }else{
                     return  Observable.error(new AuthException(-100,"token超时"));
@@ -117,7 +114,5 @@ public class ProxyHandler implements InvocationHandler {
     }
 
 
-    public Observable<String> getTokenObsevable() {
-        return null;
-    }
+    public abstract Observable<String> getTokenObsevable();
 }

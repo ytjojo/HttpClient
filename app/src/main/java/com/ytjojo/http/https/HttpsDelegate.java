@@ -44,10 +44,10 @@ public class HttpsDelegate {
         return mInstance;
     }
 
-    public static  Pair<SSLSocketFactory,X509TrustManager> getUsafeSslSocketFactory(){
+    public static  Pair<SSLSocketFactory,X509TrustManager> getUnsafeSslSocketFactory(){
         return getSslSocketFactory(null,null,null);
     }
-    public static  Pair<SSLSocketFactory,X509TrustManager> getUsafeSslSocketFactory(InputStream[] certificates){
+    public static  Pair<SSLSocketFactory,X509TrustManager> getUnsafeSslSocketFactory(InputStream[] certificates){
         return getSslSocketFactory(certificates,null,null);
     }
     public static Pair<SSLSocketFactory,X509TrustManager> getSslSocketFactory(InputStream[] certificates, InputStream bksFile, String password)

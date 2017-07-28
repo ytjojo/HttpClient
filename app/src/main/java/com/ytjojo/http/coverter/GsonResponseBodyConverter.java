@@ -22,7 +22,7 @@ import com.google.gson.TypeAdapter;
 import com.google.gson.internal.$Gson$Types;
 import com.ytjojo.http.ResponseWrapper;
 import com.ytjojo.http.exception.APIException;
-import com.ytjojo.http.exception.AuthException;
+import com.ytjojo.http.exception.TokenInvalidException;
 import com.ytjojo.utils.TextUtils;
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -59,7 +59,7 @@ final class GsonResponseBodyConverter<T> implements Converter<ResponseBody, T> {
 		String msg = msgJE == null ? null : msgJE.getAsString();
 		if (code != ResponseWrapper.RESULT_OK) {
 			if (code == ResponseWrapper.EXCEPTION_TOKEN_NOTVALID) {
-				throw new AuthException(code, msg);
+				throw new TokenInvalidException(code, msg);
 			} else {
 				//返回的code不是RESULT_OK时Toast显示msg
 				throw new APIException(code, msg, value);

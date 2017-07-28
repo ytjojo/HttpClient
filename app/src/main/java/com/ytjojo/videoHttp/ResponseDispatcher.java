@@ -6,6 +6,7 @@ import android.os.Looper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectReader;
+import com.ytjojo.http.OkHttpClientBuilder;
 import com.ytjojo.utils.TextUtils;
 
 import java.io.IOException;
@@ -18,7 +19,6 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 
-import static com.ytjojo.http.CustomerOkHttpClient.getClient;
 import static com.ytjojo.videoHttp.JsonRequestBody.mapper;
 
 /**
@@ -254,7 +254,7 @@ public class ResponseDispatcher {
      * @return
      */
     public ResponseDispatcher connectTimeout(int connect,int read$write){
-        mOkHttpClient= getClient().newBuilder().connectTimeout(connect, TimeUnit.SECONDS).readTimeout(read$write,TimeUnit.SECONDS)
+        mOkHttpClient= OkHttpClientBuilder.builder().connectTimeout(connect, TimeUnit.SECONDS).readTimeout(read$write,TimeUnit.SECONDS)
         .writeTimeout(read$write,TimeUnit.SECONDS).build();
         return this;
     }
