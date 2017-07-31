@@ -44,7 +44,7 @@ public class UploadHelper {
             callback.totalLength+=file.length();
             params.put("file[]\"; filename=\"" + file.getName(), requestBody);
         }
-        UploadService serverApi= RetrofitClient.getRetrofit().create(UploadService.class);
+        UploadService serverApi= RetrofitClient.getDefault().create(UploadService.class);
         return serverApi.uploadFile(url,des, params);
     }
     public interface UploadService{

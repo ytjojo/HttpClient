@@ -21,37 +21,54 @@ import org.json.JSONObject;
 public class HeaderInterceptor implements Interceptor {
     private static final Charset UTF8 = Charset.forName("UTF-8");
     private final HashMap<String,String> mHeaders =new HashMap<>();
+    private final HeaderCallable mTokenCallable;
+    private final CountDownLatch mCountDownLatch = new CountDownLatch(1);
+    private final String baseUrl;
     public void putHeader(String key,String value){
         if(key !=null && value !=null)
         mHeaders.put(key,value);
     }
-    HeaderCallable mTokenCallable;
-    CountDownLatch mCountDownLatch = new CountDownLatch(1);
-    public HeaderInterceptor(HeaderCallable tokenCallable){
+    public void putHeaders(HashMap<String,String> headers){
+        if(headers!=null){
+
+            mHeaders.putAll(headers);
+        }
+
+    }
+    public HeaderInterceptor(HeaderCallable tokenCallable,String baseUrl){
         this.mTokenCallable = tokenCallable;
+        this.baseUrl = baseUrl;
     }
     void clearAuth() {
        mHeaders.clear();
 
     }
     AtomicBoolean isTokenRequestRunning = new AtomicBoolean(false);
-    void processAuth() throws Exception{
+    void processAuth() throws AuthException{
         try{
-            mTokenCallable.call();
+            String value = mTokenCallable.call();
+            if(value !=null){
+                mHeaders.put(mTokenCallable.key(),value);
+            }else{
+                throw new AuthException("HeaderCallable.call()获得的headervalue为null");
+            }
         }catch (Exception e){
             throw new AuthException(e);
         }
+
     }
 
     @Override
     public Response intercept(Chain chain) throws IOException {
         final Request request = chain.request();
 
-        if (request.url().toString().startsWith(RetrofitClient.BASE_URL)) {
+        if (request.url().toString().startsWith(baseUrl)) {
             final Response response = chain.proceed(updateHeadaerIfNeeded(chain));
             try {
                 if(isTokenExpired(response)){
-                    requestTokenAync();
+                    if(mTokenCallable!=null){
+                        requestTokenAync();
+                    }
                     final Request.Builder requestBuilder = request.newBuilder();
                     for(HashMap.Entry<String,String> entry:mHeaders.entrySet()){
                         String key = entry.getKey();

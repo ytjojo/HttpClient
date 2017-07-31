@@ -6,17 +6,11 @@ import java.util.concurrent.Callable;
  * Created by Administrator on 2016/10/18 0018.
  */
 public abstract class HeaderCallable implements Callable<String> {
-    HeaderInterceptor mHeaderInterceptor;
-    boolean isPutHeader;
-    public void reset(){
-        isPutHeader = false;
-    }
-
-    public boolean putHeader(String key,String value){
-        mHeaderInterceptor.putHeader(key,value);
-        isPutHeader = true;
-        return isPutHeader;
-    }
+//    HeaderInterceptor mHeaderInterceptor;
+//
+//    public void putHeader(String key,String value){
+//        mHeaderInterceptor.putHeader(key,value);
+//    }
     //public void request(){
     //    Response responseBody = OkHttpClientBuilder.getClient().newCall(getRequest()).execute();
     //    BufferedSource bufferedSource = Okio.buffer(responseBody.body().source());
@@ -24,6 +18,4 @@ public abstract class HeaderCallable implements Callable<String> {
     //    bufferedSource.close();
     //}
     public abstract String key();
-    public abstract String cachedValue();
-
 }

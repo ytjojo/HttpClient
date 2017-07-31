@@ -7,30 +7,28 @@ import java.security.NoSuchAlgorithmException;
 import java.sql.Timestamp;
 import java.util.Date;
 
-public class Platform {
-    public enum PlatFormType{
-        Android,Java;
-    }
-    public static final PlatFormType PLATFORM = findPlatform();
+public enum Platform {
+    Android,Java;
+    public static final Platform PLATFORM = findPlatform();
 
-    public static Platform.PlatFormType get()
+    public static Platform get()
     {
         return PLATFORM;
     }
 
-    private static Platform.PlatFormType findPlatform()
+    private static Platform findPlatform()
     {
         try
         {
             Class.forName("android.os.Build");
             if (Build.VERSION.SDK_INT != 0)
             {
-                return PlatFormType.Android;
+                return Android;
             }
         } catch (ClassNotFoundException ignored)
         {
         }
-        return PlatFormType.Java;
+        return Java;
     }
 
 

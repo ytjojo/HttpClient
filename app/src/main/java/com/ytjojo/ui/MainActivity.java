@@ -118,7 +118,7 @@ public class MainActivity extends AppCompatActivity {
         mGitApiInterface = service;
     }
     private void login() {
-        RetrofitClient.GitApiInterface gitApiInterface =ProxyHandler.create(RetrofitClient.getRetrofit(),RetrofitClient.GitApiInterface.class);
+        RetrofitClient.GitApiInterface gitApiInterface = RetrofitClient.getDefault().create(com.ytjojo.http.RetrofitClient.GitApiInterface.class);
         LoginRequest request = new LoginRequest();
         gitApiInterface.loginAttr(request.uid,request.pwd,request.rid,request.forAccessToken).compose(ObservableCreator.applySchedulersIO()).subscribe(new Subscriber<LoginResponse>() {
             @Override
@@ -142,7 +142,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
     private void getAddrArea() {
-        RetrofitClient.GitApiInterface gitApiInterface =ProxyHandler.create(RetrofitClient.getRetrofit(),RetrofitClient.GitApiInterface.class);
+        RetrofitClient.GitApiInterface gitApiInterface = RetrofitClient.getDefault().create(RetrofitClient.GitApiInterface.class);
         LoginRequest request = new LoginRequest();
         gitApiInterface.getAddrArea(null,0).compose(ObservableCreator.applySchedulersIO()).subscribe(new Subscriber<JsonObject>() {
             @Override
@@ -165,7 +165,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
     private void testGetDic(){
-        RetrofitClient.GitApiInterface gitApiInterface =ProxyHandler.create(RetrofitClient.getRetrofit(),RetrofitClient.GitApiInterface.class);
+        RetrofitClient.GitApiInterface gitApiInterface = RetrofitClient.getDefault().create(RetrofitClient.GitApiInterface.class);
         gitApiInterface.getHealthCardTypeDict().compose(ObservableCreator.applySchedulersIO()).subscribe(new Subscriber<JsonObject>() {
             @Override public void onCompleted() {
 
@@ -183,7 +183,7 @@ public class MainActivity extends AppCompatActivity {
     long mBegin;
     private void testArray(){
         mBegin = System.currentTimeMillis();
-        RetrofitClient.GitApiInterface gitApiInterface =ProxyHandler.create(RetrofitClient.getRetrofit(),RetrofitClient.GitApiInterface.class);
+        RetrofitClient.GitApiInterface gitApiInterface = RetrofitClient.getDefault().create(RetrofitClient.GitApiInterface.class);
         gitApiInterface.loginWithArray("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/*.jsonRequest",1).compose(ObservableCreator.applySchedulersIO()).subscribe(new Subscriber<OrganAddrArea>() {
             @Override
             public void onCompleted() {

@@ -48,10 +48,13 @@ allprojects {
     }
 
 }
-
-task clean(type: Delete) {
+clean {
     delete rootProject.buildDir
 }
+task customClean(type: Delete) {
+    delete rootProject.buildDir
+}
+clean.dependsOn customClean
 ext {
     // Sdk and tools
     minSdkVersion = 15

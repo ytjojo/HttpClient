@@ -10,6 +10,9 @@ public class AuthException extends RuntimeException {
         super(msg);
         this.code = code;
     }
+    public AuthException(String msg) {
+        super(msg);
+    }
     public AuthException(int code,String msg,Throwable throwable) {
         super(msg,throwable);
         this.code = code;

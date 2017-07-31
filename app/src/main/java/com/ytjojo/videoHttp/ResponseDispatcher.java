@@ -158,7 +158,7 @@ public class ResponseDispatcher {
                     try {
                         if (mBodyJavaType != null) {
                             JavaType javaType = mapper.getTypeFactory().constructParametrizedType(ResponseWraper.class, ResponseWraper.class, mBodyJavaType);
-                            ObjectReader reader = mapper.reader(javaType);
+                            ObjectReader reader = mapper.readerFor(javaType);
                             wraper = reader.readValue(requestBody.charStream());
                         } else if (mTypeReference != null) {
                             wraper = mapper.readValue(requestBody.charStream(), mTypeReference);
@@ -182,6 +182,11 @@ public class ResponseDispatcher {
             }
         });
     }
+
+    private OkHttpClient getClient() {
+        return null;
+    }
+
     private <T> void onSuccsess(final T t){
         if(mCallback ==null){
             return;
@@ -254,7 +259,7 @@ public class ResponseDispatcher {
      * @return
      */
     public ResponseDispatcher connectTimeout(int connect,int read$write){
-        mOkHttpClient= OkHttpClientBuilder.builder().connectTimeout(connect, TimeUnit.SECONDS).readTimeout(read$write,TimeUnit.SECONDS)
+        mOkHttpClient= OkHttpClientBuilder.builder(null).connectTimeout(connect, TimeUnit.SECONDS).readTimeout(read$write,TimeUnit.SECONDS)
         .writeTimeout(read$write,TimeUnit.SECONDS).build();
         return this;
     }

@@ -1,6 +1,7 @@
 package com.ytjojo.http;
 
 import android.content.Context;
+import android.support.annotation.Nullable;
 import android.support.v4.util.Pair;
 import com.google.gson.JsonObject;
 import com.ytjojo.BaseApplication;
@@ -9,14 +10,21 @@ import com.ytjojo.domin.response.OrganAddrArea;
 import com.ytjojo.domin.vo.LoginResponse;
 import com.ytjojo.http.coverter.GsonConverterFactory;
 import com.ytjojo.http.https.HttpsDelegate;
+import com.ytjojo.http.interceptor.HeaderCallable;
+import com.ytjojo.http.interceptor.HeaderInterceptor;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.X509TrustManager;
+
+import okhttp3.Interceptor;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
@@ -39,17 +47,21 @@ import retrofit2.http.Url;
 import rx.Observable;
 
 public class RetrofitClient {
-    public static final String BASE_URL="http://192.168.0.46:8080";
     public static volatile  String TOKEN;
     public static  final String TOKEN_HEADER_KEY = "X-Access-Token";
     public static  final String ContentType_JSON = "application/json";
     public static  final String ContentType_FORM = "application/x-www-form-urlencoded; charset=UTF-8";
-    public static final int HTTP_RESPONSE_DISK_CACHE_MAX_SIZE=10 * 1024 * 1024;
     private Retrofit retrofit ;
     static OkHttpClient mOkHttpClient;
     public RetrofitClient(Retrofit retrofit){
         this.retrofit = retrofit;
     }
+    public static RetrofitClient mDefaultRetrofitClient;
+    private HeaderInterceptor mHeaderInterceptor;
+    public void putHeader(String key,String value){
+        mHeaderInterceptor.putHeader(key,value);
+    }
+
     public void clearCached(){
         try {
             mOkHttpClient.cache().delete();
@@ -57,10 +69,19 @@ public class RetrofitClient {
             e.printStackTrace();
         }
     }
-    public static void init(Context c){
-
+    public static void init(@Nullable Context c,String baseUrl){
+        mDefaultRetrofitClient = RetrofitClient.newBuilder(c).unsafeSSLSocketFactory().baseUrl(baseUrl).build();
     }
-    public static Builder newBuilder(Context context){
+    public static void setDefault(RetrofitClient client){
+        mDefaultRetrofitClient = client;
+    }
+    public void addInterceptor(Interceptor interceptor){
+        mOkHttpClient.interceptors().add(interceptor);
+    }
+    public void removeInterceptor(Interceptor interceptor){
+        mOkHttpClient.interceptors().remove(interceptor);
+    }
+    public static Builder newBuilder(@Nullable  Context context){
         return new Builder(context);
     }
     public static class Builder{
@@ -70,7 +91,9 @@ public class RetrofitClient {
         int writeTimeout;
         int readTimeout;
         int connectTimeout;
-        private Pair<SSLSocketFactory, X509TrustManager> sslFactory;
+        Pair<SSLSocketFactory, X509TrustManager> sslFactory;
+        HeaderCallable headerCallable;
+
 
         public Builder(Context context){
            this.context =  context.getApplicationContext();
@@ -93,6 +116,10 @@ public class RetrofitClient {
         }
         public Builder connectTimeout(int connectTimeout){
             this.connectTimeout = connectTimeout;
+            return this;
+        }
+        public Builder headerCallable(HeaderCallable headerCallable){
+            this.headerCallable = headerCallable;
             return this;
         }
 
@@ -127,37 +154,50 @@ public class RetrofitClient {
             return this;
         }
         public RetrofitClient build(){
-                Retrofit  retrofit = new Retrofit.Builder()
-                .baseUrl(baseUrl)
-                .client(OkHttpClientBuilder.builder(context).build())
-                .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
-                .addConverterFactory(GsonConverterFactory.create())
-                .build();
+            OkHttpClient.Builder builder = OkHttpClientBuilder.builder(context);
+            if(connectTimeout>0){
+                builder.connectTimeout(connectTimeout, TimeUnit.SECONDS);
+            }
+            if(readTimeout>0){
+                builder.readTimeout(readTimeout, TimeUnit.SECONDS);
+            }
+            if(writeTimeout>0){
+                builder.writeTimeout(writeTimeout, TimeUnit.SECONDS);
+
+            }
+            if(sslFactory != null){
+                builder.sslSocketFactory(sslFactory.first,sslFactory.second);
+            }
+            HeaderInterceptor headerInterceptor= new HeaderInterceptor(headerCallable,baseUrl);
+            if(headers !=null){
+                headerInterceptor.putHeaders(headers);
+            }
+            builder.addInterceptor(headerInterceptor);
+            Retrofit  retrofit = new Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .client(builder.build())
+            .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create())
+            .build();
             return new RetrofitClient(retrofit);
         }
     }
-
-    private static void create(Context c){
-        retrofit = new Retrofit.Builder()
-                .baseUrl(BASE_URL)
-                .client(OkHttpClientBuilder.builder(c.getApplicationContext()).build())
-                .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
-                .addConverterFactory(GsonConverterFactory.create())
-                .build();
-    }
-    public  <T> T getService(Class<T> service){
-        return retrofit.create(service);
-    }
-    public <T> T getHackedService(Class<T> service){
+    public  <T> T create(Class<T> service){
         return ProxyHandler.create(retrofit,service);
     }
 
+    public static RetrofitClient getDefault(){
+        if(mDefaultRetrofitClient==null){
+            mDefaultRetrofitClient = RetrofitClient.newBuilder(null).build();
+        }
+        return mDefaultRetrofitClient;
+    }
 
     public void uploadByPartmap(String token,String catalog, int mode, String id, File file, HashMap<String,String> params){
 
         RequestBody catalogRB = RequestBody.create(null, catalog);
         RequestBody idRB = RequestBody.create(null, id);
-        RequestBody modeRB = RequestBody.create(MediaType.parse("text/plain"), token);
+        RequestBody modeRB = RequestBody.create(MediaType.parse("text/plain"), mode+"");
         Map<String, RequestBody> requestBodyMap = new HashMap<>();
         for(Map.Entry<String,String> entry: params.entrySet()){
             RequestBody value =RequestBody.create(null, entry.getValue());
@@ -169,17 +209,17 @@ public class RetrofitClient {
                 "file",
                 file.getName(),
                 RequestBody.create(MediaType.parse("image/*"), file));
-        RetrofitClient.getRetrofit(BaseApplication.getInstance()).create(GitApiInterface.class).uploadImage(token,catalogRB,idRB,modeRB,fileBody);
+        RetrofitClient.getDefault().create(GitApiInterface.class).uploadImage(token,catalogRB,idRB,modeRB,fileBody);
     }
-    public void upload(String token, int mode, String id, File file, HashMap<String,String> params){
+    public void upload( File file, HashMap<String,String> params){
         Map<String, RequestBody> requestBodyMap = new HashMap<>();
         for(Map.Entry<String,String> entry: params.entrySet()){
-            RequestBody value = RequestBody.create(MediaType.parse("multipart/form-body"), entry.getValue());
+            RequestBody value = RequestBody.create(MediaType.parse("multipart/form-data"), entry.getValue());
             requestBodyMap.put(entry.getKey(),value);
         }
         String fileName = "file\"; filename=\"" + file.getName();
-        requestBodyMap.put(fileName, RequestBody.create(MediaType.parse("multipart/form-body"), file));
-        RetrofitClient.getRetrofit(BaseApplication.getInstance()).create(GitApiInterface.class).uploadImagePartMap(requestBodyMap);
+        requestBodyMap.put(fileName, RequestBody.create(MediaType.parse("multipart/form-data"), file));
+        RetrofitClient.getDefault().create(GitApiInterface.class).uploadImagePartMap(requestBodyMap);
     }
     public interface GitApiInterface {
 

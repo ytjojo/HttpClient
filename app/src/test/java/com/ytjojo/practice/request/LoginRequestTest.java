@@ -43,7 +43,7 @@ public class LoginRequestTest {
         activity = controller.get();
         activity.setApi(mockApi);
         controller.create();
-        RetrofitClient.getRetrofit(RuntimeEnvironment.application);
+        RetrofitClient.getDefault();
 
     }
     @Test
