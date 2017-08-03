@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import com.ytjojo.domin.request.LoginRequest;
 import com.ytjojo.domin.response.OrganAddrArea;
 import com.ytjojo.domin.vo.LoginResponse;
+import com.ytjojo.http.GitApiInterface;
 import com.ytjojo.http.RetrofitClient;
 import java.util.ArrayList;
 import java.util.Map;
@@ -19,10 +20,10 @@ import retrofit2.http.Url;
 import retrofit2.mock.BehaviorDelegate;
 import rx.Observable;
 
-public class MyServiceMock implements RetrofitClient.GitApiInterface {
-    private final BehaviorDelegate<RetrofitClient.GitApiInterface> delegate;
+public class MyServiceMock implements GitApiInterface {
+    private final BehaviorDelegate<GitApiInterface> delegate;
 
-    public MyServiceMock(BehaviorDelegate<RetrofitClient.GitApiInterface> delegate) {
+    public MyServiceMock(BehaviorDelegate<GitApiInterface> delegate) {
         this.delegate = delegate;
     }
 

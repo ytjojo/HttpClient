@@ -25,11 +25,11 @@ import com.orhanobut.logger.Logger;
 import com.ytjojo.domin.request.LoginRequest;
 import com.ytjojo.domin.response.OrganAddrArea;
 import com.ytjojo.domin.vo.LoginResponse;
+import com.ytjojo.http.GitApiInterface;
 import com.ytjojo.http.RetrofitClient;
 import com.ytjojo.practice.R;
 import com.ytjojo.rx.ObservableCreator;
 import com.ytjojo.utils.DensityUtil;
-import retrofit2.ProxyHandler;
 import rx.Subscriber;
 
 public class MainActivity extends AppCompatActivity {
@@ -113,12 +113,12 @@ public class MainActivity extends AppCompatActivity {
         });
         login();
     }
-    RetrofitClient.GitApiInterface mGitApiInterface;
-    public void setApi(RetrofitClient.GitApiInterface service){
+    GitApiInterface mGitApiInterface;
+    public void setApi(GitApiInterface service){
         mGitApiInterface = service;
     }
     private void login() {
-        RetrofitClient.GitApiInterface gitApiInterface = RetrofitClient.getDefault().create(com.ytjojo.http.RetrofitClient.GitApiInterface.class);
+        GitApiInterface gitApiInterface = RetrofitClient.getDefault().create(com.ytjojo.http.GitApiInterface.class);
         LoginRequest request = new LoginRequest();
         gitApiInterface.loginAttr(request.uid,request.pwd,request.rid,request.forAccessToken).compose(ObservableCreator.applySchedulersIO()).subscribe(new Subscriber<LoginResponse>() {
             @Override
@@ -142,7 +142,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
     private void getAddrArea() {
-        RetrofitClient.GitApiInterface gitApiInterface = RetrofitClient.getDefault().create(RetrofitClient.GitApiInterface.class);
+        GitApiInterface gitApiInterface = RetrofitClient.getDefault().create(GitApiInterface.class);
         LoginRequest request = new LoginRequest();
         gitApiInterface.getAddrArea(null,0).compose(ObservableCreator.applySchedulersIO()).subscribe(new Subscriber<JsonObject>() {
             @Override
@@ -165,7 +165,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
     private void testGetDic(){
-        RetrofitClient.GitApiInterface gitApiInterface = RetrofitClient.getDefault().create(RetrofitClient.GitApiInterface.class);
+        GitApiInterface gitApiInterface = RetrofitClient.getDefault().create(GitApiInterface.class);
         gitApiInterface.getHealthCardTypeDict().compose(ObservableCreator.applySchedulersIO()).subscribe(new Subscriber<JsonObject>() {
             @Override public void onCompleted() {
 
@@ -183,7 +183,7 @@ public class MainActivity extends AppCompatActivity {
     long mBegin;
     private void testArray(){
         mBegin = System.currentTimeMillis();
-        RetrofitClient.GitApiInterface gitApiInterface = RetrofitClient.getDefault().create(RetrofitClient.GitApiInterface.class);
+        GitApiInterface gitApiInterface = RetrofitClient.getDefault().create(GitApiInterface.class);
         gitApiInterface.loginWithArray("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/*.jsonRequest",1).compose(ObservableCreator.applySchedulersIO()).subscribe(new Subscriber<OrganAddrArea>() {
             @Override
             public void onCompleted() {

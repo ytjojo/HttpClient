@@ -3,23 +3,20 @@ package com.ytjojo.practice;
 import com.google.gson.Gson;
 import com.ytjojo.domin.request.LoginRequest;
 import com.ytjojo.domin.vo.LoginResponse;
-import com.ytjojo.http.RetrofitClient;
+import com.ytjojo.http.GitApiInterface;
 import com.ytjojo.http.coverter.GsonConverterFactory;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.nio.charset.Charset;
 import java.util.Random;
 import java.util.Scanner;
-
 import okhttp3.OkHttpClient;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava.RxJavaCallAdapterFactory;
 import rx.functions.Action1;
@@ -86,7 +83,7 @@ public class ServiceTestBase {
     public void testLogin() throws Exception {
         // Response
         sendMockMessages("/login.json");
-        RetrofitClient.GitApiInterface gitApiInterface = mRetrofit.create(RetrofitClient.GitApiInterface.class);
+        GitApiInterface gitApiInterface = mRetrofit.create(GitApiInterface.class);
         gitApiInterface.login(new LoginRequest()).subscribe(new Action1<LoginResponse>() {
             @Override
             public void call(LoginResponse response) {

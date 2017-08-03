@@ -1,10 +1,9 @@
 package com.ytjojo.practice.module.user;
 
 import com.ytjojo.domin.request.LoginRequest;
-import com.ytjojo.http.RetrofitClient;
+import com.ytjojo.http.GitApiInterface;
 import com.ytjojo.module.user.LoginPresenter;
 import com.ytjojo.module.user.NetworkCallback;
-
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -20,7 +19,7 @@ public class LoginPresenterTest {
 
     @Test
     public void testLogin(){
-        RetrofitClient.GitApiInterface gitApiInterface= Mockito.mock(RetrofitClient.GitApiInterface.class);
+        GitApiInterface gitApiInterface= Mockito.mock(GitApiInterface.class);
         LoginPresenter loginPresenter =new LoginPresenter();
         loginPresenter.setApiService(gitApiInterface);
         loginPresenter.login("18668436182","27483X");

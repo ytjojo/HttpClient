@@ -3,7 +3,7 @@ package com.ytjojo.practice;
 import com.google.gson.JsonObject;
 import com.ytjojo.domin.request.LoginRequest;
 import com.ytjojo.domin.vo.LoginResponse;
-import com.ytjojo.http.RetrofitClient;
+import com.ytjojo.http.GitApiInterface;
 import com.ytjojo.http.coverter.GsonConverterFactory;
 import com.ytjojo.http.interceptor.ReceivedCookiesInterceptor;
 import java.util.ArrayList;
@@ -45,7 +45,7 @@ public class SeeviceTest {
 	public void login(){
 		LoginRequest request = new LoginRequest();
 
-		retrofit.create(RetrofitClient.GitApiInterface.class).login(request).subscribe(new Subscriber<LoginResponse>() {
+		retrofit.create(GitApiInterface.class).login(request).subscribe(new Subscriber<LoginResponse>() {
 			@Override public void onCompleted() {
 
 			}
@@ -58,7 +58,7 @@ public class SeeviceTest {
 				System.out.println(loginResponse.body.getDisplayName());
 				ArrayList<Integer> integers = new ArrayList<Integer>();
 				integers.add( loginResponse.body.getId());
-				ProxyHandler.create(retrofit,RetrofitClient.GitApiInterface.class)
+				ProxyHandler.create(retrofit,GitApiInterface.class)
 				.getPatientNumByHeader(integers).subscribe(new Subscriber<JsonObject>() {
 					@Override public void onCompleted() {
 						System.out.println("onCompleted");

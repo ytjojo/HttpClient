@@ -1,11 +1,11 @@
 package com.ytjojo.practice.request;
 
 import com.ytjojo.domin.vo.LoginResponse;
+import com.ytjojo.http.GitApiInterface;
+import com.ytjojo.http.RetrofitClient;
 import com.ytjojo.practice.BuildConfig;
 import com.ytjojo.practice.TestSchedulerRule;
-import com.ytjojo.http.RetrofitClient;
 import com.ytjojo.ui.MainActivity;
-
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -16,10 +16,8 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricGradleTestRunner;
-import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
 import org.robolectric.util.ActivityController;
-
 import rx.Observable;
 
 /**
@@ -33,7 +31,7 @@ public class LoginRequestTest {
     @Rule
     public final TestSchedulerRule testSchedulerRule = new TestSchedulerRule();
     @Mock
-    private RetrofitClient.GitApiInterface mockApi;
+    private GitApiInterface mockApi;
     @Captor
     private ArgumentCaptor<Observable<LoginResponse>> cb;
     @Before

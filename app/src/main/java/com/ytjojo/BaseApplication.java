@@ -60,4 +60,17 @@ public class BaseApplication extends Application {
     public boolean isLargeScreen(){
         return !getResources().getBoolean(R.bool.small_screen);
     }
+
+    @Override public void onLowMemory() {
+        super.onLowMemory();
+    }
+
+    @Override public void onTerminate() {
+        super.onTerminate();
+    }
+
+    @Override public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+    }
+
 }

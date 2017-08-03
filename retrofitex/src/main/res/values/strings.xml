@@ -1,0 +1,5 @@
+<resources>
+  <string name="app_name">retrofitEx</string>
+  <string name="list_delimeter">", "</string>
+
+</resources>

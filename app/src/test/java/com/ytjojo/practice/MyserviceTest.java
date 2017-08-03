@@ -2,14 +2,11 @@ package com.ytjojo.practice;
 
 import com.ytjojo.domin.request.LoginRequest;
 import com.ytjojo.domin.vo.LoginResponse;
-import com.ytjojo.http.RetrofitClient;
-
-import org.junit.Before;
-import org.junit.Test;
-
+import com.ytjojo.http.GitApiInterface;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
-
+import org.junit.Before;
+import org.junit.Test;
 import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava.RxJavaCallAdapterFactory;
 import retrofit2.mock.BehaviorDelegate;
@@ -23,7 +20,7 @@ import rx.observers.TestSubscriber;
 public class MyserviceTest {
     private final NetworkBehavior behavior = NetworkBehavior.create();
     private final rx.observers.TestSubscriber<LoginResponse> testSubscriber = TestSubscriber.create();
-    private RetrofitClient.GitApiInterface mockService;
+    private GitApiInterface mockService;
 
     @Before
     public void setUp() throws Exception {
@@ -34,7 +31,7 @@ public class MyserviceTest {
         MockRetrofit mockRetrofit = new MockRetrofit.Builder(retrofit)
                 .networkBehavior(behavior).build();
 
-        final BehaviorDelegate<RetrofitClient.GitApiInterface> delegate = mockRetrofit.create(RetrofitClient.GitApiInterface.class);
+        final BehaviorDelegate<GitApiInterface> delegate = mockRetrofit.create(GitApiInterface.class);
 
         mockService = new MyServiceMock(delegate);
     }

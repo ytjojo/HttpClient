@@ -1,7 +1,7 @@
 package com.ytjojo.module.user;
 
 import com.ytjojo.domin.request.LoginRequest;
-import com.ytjojo.http.RetrofitClient;
+import com.ytjojo.http.GitApiInterface;
 import com.ytjojo.mvp.presenter.BasePresenter;
 import com.ytjojo.utils.TextUtils;
 
@@ -10,14 +10,14 @@ import com.ytjojo.utils.TextUtils;
  */
 public class LoginPresenter extends BasePresenter<LoginView> {
 
-    RetrofitClient.GitApiInterface mGitApiInterface;
+    GitApiInterface mGitApiInterface;
     public void login(String userName,String password){
         LoginRequest request = new LoginRequest();
         request.pwd = password;
         request.uid = userName;
         mGitApiInterface.login(request);
     }
-    public void setApiService(RetrofitClient.GitApiInterface service) {
+    public void setApiService(GitApiInterface service) {
         this.mGitApiInterface = service;
     }
 

@@ -165,6 +165,7 @@ dependencies {
     }
     compile fileTree(dir: 'libs', include: ['*.jar'])
     testCompile project(':androidmock')
+    compile project(':retrofitex')
     compile 'com.android.support:multidex:1.0.1'
     compile 'com.android.support:appcompat-v7:23.4.0'
     releaseCompile project(path: ':domain', configuration: 'release')
@@ -177,9 +178,7 @@ dependencies {
     //rx
     compile 'io.reactivex:rxandroid:1.2.1'
     compile 'io.reactivex:rxjava:1.2.2'
-    compile ('com.trello:rxlifecycle:1.0'){
-        exclude group: 'com.android.support'
-    }
+
     compile ('com.trello:rxlifecycle-components:1.0'){
         exclude group: 'com.android.support'
     }
@@ -189,9 +188,9 @@ dependencies {
     compile 'com.jakewharton.rxrelay:rxrelay:1.1.0'
 
     compile 'com.f2prateek.rx.preferences:rx-preferences:1.0.1'
+    compile "com.fasterxml.jackson.core:jackson-databind:2.7.0"//自动依赖ackson.core 和ackson-annotations
     compile 'com.squareup.retrofit2:retrofit:2.2.0'
     compile 'com.google.code.gson:gson:2.7'
-    compile "com.fasterxml.jackson.core:jackson-databind:2.7.0"//自动依赖ackson.core 和ackson-annotations
     compile 'com.squareup.retrofit2:converter-gson:2.2.0'
     compile 'com.squareup.retrofit2:adapter-rxjava:2.2.0'
     compile 'com.squareup.okhttp3:logging-interceptor:3.6.0'
@@ -217,7 +216,6 @@ dependencies {
     apt "com.google.dagger:dagger-compiler:$DAGGER_VERSION"
     provided 'org.glassfish:javax.annotation:10.0-b28' //Required by Dagger2
 
-    compile 'com.github.tianzhijiexian:logger:1.1.7'
     compile 'com.github.bumptech.glide:glide:3.7.0'
     //https://github.com/promeG/XLog
     debugCompile 'com.github.promeg:xlog-compiler:2.1.1' // ~6kB
