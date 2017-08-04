@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package com.ytjojo.http.util;
+package com.ytjojo.utils;
 
+import android.content.res.Resources;
 import android.os.Parcel;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -30,10 +31,14 @@ import android.text.SpannedString;
 import android.text.style.ReplacementSpan;
 import android.util.Printer;
 import android.view.View;
+
+import com.ytjojo.practice.R;
+
 import java.lang.reflect.Array;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.regex.Pattern;
+
 
 public class TextUtils {
     private static final String TAG = "TextUtils";
@@ -262,8 +267,7 @@ public class TextUtils {
      * @hide
      */
     public static CharSequence join(Iterable<CharSequence> list) {
-        //final CharSequence delimiter = Resources.getSystem().getText(R.string.list_delimeter);
-        final CharSequence delimiter = "\", \"";
+        final CharSequence delimiter = Resources.getSystem().getText(R.string.list_delimeter);
         return join(delimiter, list);
     }
 

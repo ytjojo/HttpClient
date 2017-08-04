@@ -46,6 +46,9 @@ allprojects {
         sourceCompatibility = org.gradle.api.JavaVersion.VERSION_1_8
         targetCompatibility = org.gradle.api.JavaVersion.VERSION_1_8
     }
+    tasks.withType(Javadoc) {
+        options.encoding = 'UTF-8'
+    }
 
 }
 clean {

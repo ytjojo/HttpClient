@@ -160,16 +160,16 @@ tasks.whenTaskAdded { task ->
 dependencies {
 
     final DAGGER_VERSION = '2.0.1'
-    if(!isDebug.toBoolean()){
-        compile project(':component')
-    }
+//    if(!isDebug.toBoolean()){
+//        compile project(':component')
+//    }
     compile fileTree(dir: 'libs', include: ['*.jar'])
     testCompile project(':androidmock')
     compile project(':retrofitex')
     compile 'com.android.support:multidex:1.0.1'
     compile 'com.android.support:appcompat-v7:23.4.0'
-    releaseCompile project(path: ':domain', configuration: 'release')
-    debugCompile project(path: ':domain', configuration: 'debug')
+//    releaseCompile project(path: ':domain', configuration: 'release')
+//    debugCompile project(path: ':domain', configuration: 'debug')
     compile 'com.android.support:design:23.4.0'
     compile 'com.android.support:recyclerview-v7:23.4.0'
     compile 'com.android.support:cardview-v7:23.4.0'
@@ -189,12 +189,7 @@ dependencies {
 
     compile 'com.f2prateek.rx.preferences:rx-preferences:1.0.1'
     compile "com.fasterxml.jackson.core:jackson-databind:2.7.0"//自动依赖ackson.core 和ackson-annotations
-    compile 'com.squareup.retrofit2:retrofit:2.2.0'
     compile 'com.google.code.gson:gson:2.7'
-    compile 'com.squareup.retrofit2:converter-gson:2.2.0'
-    compile 'com.squareup.retrofit2:adapter-rxjava:2.2.0'
-    compile 'com.squareup.okhttp3:logging-interceptor:3.6.0'
-    compile 'com.squareup.okhttp3:okhttp:3.6.0'
     compile 'com.github.katelee.widget:recyclerviewlayout:0.9.5'
     compile 'com.github.bumptech.glide:glide:3.7.0'
     compile 'jp.wasabeef:glide-transformations:2.0.0'
@@ -221,8 +216,6 @@ dependencies {
     debugCompile 'com.github.promeg:xlog-compiler:2.1.1' // ~6kB
     debugCompile 'com.github.promeg:xlog-android:2.1.1' // ~150kB
     releaseCompile 'com.github.promeg:xlog-android-idle:2.1.1' // ~5kB
-    compile 'com.jakewharton:butterknife:8.1.0'
-    apt 'com.jakewharton:butterknife-compiler:8.1.0'
 //    androidTestCompile 'com.android.support.test:runner:0.5'
 //    androidTestCompile 'com.android.support.test:rules:0.5'
 
@@ -257,7 +250,7 @@ dependencies {
     //UI
     testCompile 'org.robolectric:robolectric:3.0'
     // Dependencies for local unit tests
-    testCompile 'com.squareup.retrofit2:retrofit-mock:2.2.0'
+    testCompile 'com.squareup.retrofit2:retrofit-mock:2.3.0'
     testCompile "junit:junit:$rootProject.ext.junitVersion"
     testCompile "org.mockito:mockito-all:$rootProject.ext.mockitoVersion"
     testCompile "org.hamcrest:hamcrest-all:$rootProject.ext.hamcrestVersion"
@@ -265,7 +258,7 @@ dependencies {
     testCompile "org.powermock:powermock-module-junit4-rule:1.6.2"
     testCompile "org.powermock:powermock-api-mockito:1.6.2"
     testCompile "org.powermock:powermock-classloading-xstream:1.6.2"
-    testCompile 'com.squareup.okhttp3:mockwebserver:3.6.0'
+    testCompile 'com.squareup.okhttp3:mockwebserver:3.8.1'
     // Espresso UI Testing
     androidTestCompile "com.android.support.test:runner:$rootProject.runnerVersion"
     androidTestCompile "com.android.support.test:rules:$rootProject.rulesVersion"

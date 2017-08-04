@@ -35,6 +35,8 @@ public class GsonTest {
     }
     @Test
     public void testKey(){
+      final CharSequence delimiter = "\", \"";
+      System.out.println(delimiter);
        String abc = key("abc");
        String abc123cd = key("abc","123","cd");
        String abc123 = key("abc","123",null);

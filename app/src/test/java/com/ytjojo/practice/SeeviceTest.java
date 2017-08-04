@@ -37,7 +37,7 @@ public class SeeviceTest {
 				.addCallAdapterFactory(RxJavaCallAdapterFactory.create())
 				.addConverterFactory(GsonConverterFactory.create())
 				.client(o)
-				.baseUrl("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/*.jsonRequest/").build();
+				.baseUrl("https://baseapi.ngarihealth.com/ehealth-base/").build();
 		System.out.println("setUp");
 
 	}
@@ -80,4 +80,27 @@ public class SeeviceTest {
 		});
 	}
 
+	@Test
+	public void tess(){
+		int ss =1425;
+		ArrayList<Integer> integers = new ArrayList<Integer>();
+		integers.add(ss);
+		ProxyHandler.create(retrofit,GitApiInterface.class)
+				.getPatientNumByHeader(integers).subscribe(new Subscriber<JsonObject>() {
+			@Override public void onCompleted() {
+				System.out.println("onCompleted");
+			}
+
+			@Override public void onError(Throwable e) {
+				System.out.println("Throwable");
+				e.printStackTrace();
+				System.out.println(e.getMessage());
+			}
+
+			@Override public void onNext(JsonObject jsonpObject) {
+				System.out.println(" onNext" +jsonpObject.toString());
+				System.out.println("onNext");
+			}
+		});
+	}
 }

@@ -4,7 +4,6 @@ import android.content.Context;
 import android.widget.Toast;
 import com.orhanobut.logger.Logger;
 import com.ytjojo.http.exception.APIException;
-import com.ytjojo.http.retrofitex.BuildConfig;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
@@ -63,9 +62,7 @@ public abstract class BaseSubscriber<T> extends Subscriber<T> {
 
     public void onUnknownException(Throwable e) {
         e.printStackTrace();
-        if (context != null &&! BuildConfig.BUILD_TYPE.equals("release")) {
-            Logger.e(e.getMessage());
-        }
+        Logger.e(e.getMessage());
     }
 
 }
