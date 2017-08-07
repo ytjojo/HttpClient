@@ -29,10 +29,25 @@ public class RetrofitClient {
     public RetrofitClient(Retrofit retrofit){
         this.retrofit = retrofit;
     }
+    public RetrofitClient(Retrofit retrofit,HeaderInterceptor headerInterceptor){
+        this.mHeaderInterceptor = headerInterceptor;
+        this.retrofit = retrofit;
+    }
     public static RetrofitClient mDefaultRetrofitClient;
     private HeaderInterceptor mHeaderInterceptor;
     public void putHeader(String key,String value){
         mHeaderInterceptor.putHeader(key,value);
+    }
+
+    /**
+     * 用户在登录页面登录成功之后
+     * 获得token 要调用此方法
+     * 方法会重置自动刷新token的标识
+     * @param key
+     * @param token
+     */
+    public void onUserLoginGetToke(String key,String token){
+        mHeaderInterceptor.onUserLoginGetToken(key,token);
     }
 
     public void clearCached(){
@@ -128,6 +143,9 @@ public class RetrofitClient {
         }
         public RetrofitClient build(){
             OkHttpClient.Builder builder = OkHttpClientBuilder.builder(context);
+            if(baseUrl ==null){
+                throw new IllegalArgumentException("baseUrl can't be null");
+            }
             if(connectTimeout>0){
                 builder.connectTimeout(connectTimeout, TimeUnit.SECONDS);
             }
@@ -152,7 +170,7 @@ public class RetrofitClient {
             .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
             .addConverterFactory(GsonConverterFactory.create())
             .build();
-            return new RetrofitClient(retrofit);
+            return new RetrofitClient(retrofit,headerInterceptor);
         }
     }
     public  <T> T create(Class<T> service){

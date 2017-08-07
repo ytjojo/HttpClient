@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit;
 import rx.Observable;
 import rx.Observer;
 import rx.Subscriber;
+import rx.Subscription;
 import rx.functions.Action1;
 import rx.functions.Func1;
 import rx.subjects.BehaviorSubject;
@@ -71,16 +72,16 @@ public class RollingReplaySubject<T> implements Observer<T> {
         subjects.onNext(ReplaySubject.create());
     }
 
-    public void subscribe(Subscriber<T> subscriber) {
-        subjects.asObservable().flatMap(new Func1<ReplaySubject<T>, Observable<T>>() {
+    public Subscription subscribe(Subscriber<T> subscriber) {
+        return subjects.asObservable().flatMap(new Func1<ReplaySubject<T>, Observable<T>>() {
             @Override
             public Observable<T> call(ReplaySubject<T> tReplaySubject) {
                 return replaySubject.asObservable();
             }
         }).subscribe(subscriber);
     }
-    public void subscribeTail(Subscriber<T> subscriber) {
-        subjects.asObservable().flatMap(new Func1<ReplaySubject<T>, Observable<T>>() {
+    public Subscription subscribeTail(Subscriber<T> subscriber) {
+        return subjects.asObservable().flatMap(new Func1<ReplaySubject<T>, Observable<T>>() {
             @Override
             public Observable<T> call(ReplaySubject<T> tReplaySubject) {
                 return replaySubject.asObservable();
@@ -88,16 +89,16 @@ public class RollingReplaySubject<T> implements Observer<T> {
         }).throttleLast(3000, TimeUnit.MILLISECONDS).subscribe(subscriber);
     }
 
-    public <E> void subscribeType(Subscriber<E> subscriber,Class<E> clazz ) {
-        subjects.asObservable().flatMap(new Func1<ReplaySubject<?>, Observable<E>>() {
+    public <E> Subscription subscribeType(Subscriber<E> subscriber,Class<E> clazz ) {
+       return subjects.asObservable().flatMap(new Func1<ReplaySubject<?>, Observable<E>>() {
             @Override
             public Observable<E> call(ReplaySubject<?> tReplaySubject) {
                 return replaySubject.asObservable().ofType(clazz);
             }
         }).subscribe(subscriber);
     }
-    public <E> void subscribeTypeTail(Subscriber<E> subscriber,Class<E> clazz ) {
-        subjects.asObservable().flatMap(new Func1<ReplaySubject<?>, Observable<E>>() {
+    public <E> Subscription subscribeTypeTail(Subscriber<E> subscriber,Class<E> clazz ) {
+        return subjects.asObservable().flatMap(new Func1<ReplaySubject<?>, Observable<E>>() {
             @Override
             public Observable<E> call(ReplaySubject<?> tReplaySubject) {
                 return replaySubject.asObservable().ofType(clazz);

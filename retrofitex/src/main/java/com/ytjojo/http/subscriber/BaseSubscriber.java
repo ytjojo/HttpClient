@@ -56,7 +56,7 @@ public abstract class BaseSubscriber<T> extends Subscriber<T> {
 
     public void onNetworkException(Throwable e) {
         if (context != null) {
-            Toast.makeText(context, "网络较慢，请稍候...", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "网络异常，请查看网络设置...", Toast.LENGTH_SHORT).show();
         }
     }
 

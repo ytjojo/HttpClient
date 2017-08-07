@@ -6,8 +6,10 @@ import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import rx.Observable;
+import rx.Scheduler;
 import rx.functions.Func1;
 import rx.functions.Func2;
+import rx.schedulers.Schedulers;
 
 public class RetryWhenNetworkException implements Func1<Observable<? extends Throwable>, Observable<?>> {
 
@@ -45,7 +47,7 @@ public class RetryWhenNetworkException implements Func1<Observable<? extends Thr
                                 || wrapper.throwable instanceof SocketTimeoutException
                                 || wrapper.throwable instanceof TimeoutException|| wrapper.throwable instanceof UnknownHostException)
                                 && wrapper.index < count + 1) { //如果超出重试次数也抛出错误，否则默认是会进入onCompleted
-                            return Observable.timer(delay + (wrapper.index - 1) * increaseDelay, TimeUnit.MILLISECONDS);
+                            return Observable.timer(delay + (wrapper.index - 1) * increaseDelay, TimeUnit.MILLISECONDS).observeOn(Schedulers.io());
                         }
                         return Observable.error(wrapper.throwable);
                     }

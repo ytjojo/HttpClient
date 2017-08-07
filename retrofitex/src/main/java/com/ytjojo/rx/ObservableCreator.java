@@ -5,12 +5,17 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.support.v4.util.Pair;
+
 import com.orhanobut.logger.Logger;
+
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+
 import rx.Observable;
+import rx.Scheduler;
 import rx.Subscriber;
+import rx.Subscription;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action0;
 import rx.functions.Action1;
@@ -32,6 +37,27 @@ public class ObservableCreator {
                     .observeOn(AndroidSchedulers.mainThread());
         }
     };
+
+    public <T> Observable<T> periodically(long INITIAL_DELAY, long POLLING_INTERVAL, Func0<T> func0) {
+        return Observable.create(new Observable.OnSubscribe<T>() {
+            Subscription subscription;
+
+            @Override
+            public void call(Subscriber<? super T> subscriber) {
+                final Scheduler.Worker worker = Schedulers.newThread().createWorker();
+                subscription = worker.schedulePeriodically(new Action0() {
+                    @Override
+                    public void call() {
+                        if (!subscriber.isUnsubscribed()) {
+                            subscriber.onNext(func0.call());
+                        } else {
+                            subscription.unsubscribe();
+                        }
+                    }
+                }, INITIAL_DELAY, POLLING_INTERVAL, TimeUnit.MILLISECONDS);
+            }
+        });
+    }
 
     private static <T> Observable.Transformer<T, T> applySchedulers() {
         return new Observable.Transformer<T, T>() {
@@ -128,7 +154,7 @@ public class ObservableCreator {
 
     }
 
-    public <T> Observable<T> createDefer(Func0<Observable<T>> func0) {
+    public static  <T> Observable<T> createDefer(Func0<Observable<T>> func0) {
         return Observable.defer(func0);
     }
 
@@ -168,18 +194,18 @@ public class ObservableCreator {
     //            .subscribe(new Action1<Void>() {
     //                @Override
     //                public void call(Void aVoid) {
-		//
+    //
     //                }
     //            });
     //}
 
-    public <T> void  requestWithToken(Observable<T> observable,Observable<String> tokenObservable,String token) {
+    public <T> void requestWithToken(Observable<T> observable, Observable<String> tokenObservable, String token) {
         Observable.just(null).flatMap(new Func1<Object, Observable<T>>() {
             @Override
             public Observable<T> call(Object o) {
-                if(token ==null){
-                    return  Observable.error(new NullPointerException("Token is null!"));
-                }else{
+                if (token == null) {
+                    return Observable.error(new NullPointerException("Token is null!"));
+                } else {
                     return observable;
                 }
             }
@@ -187,20 +213,20 @@ public class ObservableCreator {
             @Override
             public Observable<?> call(Observable<? extends Throwable> observable) {
                 return observable.flatMap(new Func1<Throwable, Observable<?>>() {
-                            @Override
-                            public Observable<?> call(Throwable throwable) {
-                                if (throwable instanceof IllegalArgumentException || throwable instanceof NullPointerException) {
-                                    return tokenObservable
-                                            .doOnNext(new Action1<String>() {
-                                                @Override
-                                                public void call(String fakeToken) {
+                    @Override
+                    public Observable<?> call(Throwable throwable) {
+                        if (throwable instanceof IllegalArgumentException || throwable instanceof NullPointerException) {
+                            return tokenObservable
+                                    .doOnNext(new Action1<String>() {
+                                        @Override
+                                        public void call(String fakeToken) {
 
-                                                }
-                                            });
-                                }
-                                return Observable.just(throwable);
-                            }
-                        });
+                                        }
+                                    });
+                        }
+                        return Observable.just(throwable);
+                    }
+                });
             }
         });
 
@@ -299,11 +325,11 @@ public class ObservableCreator {
     //                @Override
     //                public void onCompleted() {
     //                }
-		//
+    //
     //                @Override
     //                public void onError(Throwable e) {
     //                }
-		//
+    //
     //                @Override
     //                public void onNext(TextViewTextChangeEvent onTextChangeEvent) {
     //                    action1.call(onTextChangeEvent.text().toString());
@@ -311,21 +337,6 @@ public class ObservableCreator {
     //            });
     //}
 
-    public <T> void ss(Observable<List<T>> observable, Observable<T> observable1, T defaultT) {
-        observable.flatMap(new Func1<List<T>, Observable<T>>() {
-            @Override
-            public Observable<T> call(List<T> t) {
-                return observable1;
-            }
-        })
-                .firstOrDefault(defaultT, new Func1<T, Boolean>() {
-                    @Override
-                    public Boolean call(T t) {
-                        return null;
-                    }
-                })
-                .toSingle();
-    }
 
     //public static <T> Observable<T> click(View view, Action1 onStart, Observable<T> observable, RxFragment fragment) {
     //    return RxView.clicks(view)
@@ -346,7 +357,7 @@ public class ObservableCreator {
     //    return RxTextView.textChangeEvents(et)
     //            .debounce(400, TimeUnit.MILLISECONDS)// default Scheduler is Computation
     //            .map(new Func1<TextViewTextChangeEvent, String>() {
-		//
+    //
     //                @Override
     //                public String call(TextViewTextChangeEvent textViewTextChangeEvent) {
     //                    return textViewTextChangeEvent.text().toString();
@@ -395,9 +406,9 @@ public class ObservableCreator {
         });
     }
 
-    public static <T> Observable<T> getAsyncObservable(EventSource<T> source){
+    public static <T> Observable<T> getAsyncObservable(EventSource<T> source) {
 
-        return  Observable.defer(new Func0<Observable<T>>() {
+        return Observable.defer(new Func0<Observable<T>>() {
             @Override
             public Observable<T> call() {
                 return Observable.create(new EventObservable<T>(source));
@@ -405,31 +416,41 @@ public class ObservableCreator {
         });
 
     }
-    public static abstract class EventSource <T>  {
+
+    public static abstract class EventSource<T> {
         private Subscriber<? super T> mSubscriber;
-        public void onDelieveryEvent(T event){
+
+        public void onDelieveryEvent(T event) {
             if (!mSubscriber.isUnsubscribed()) {
                 mSubscriber.onNext(event);
             }
         }
-        public void onSubscriber(Subscriber<? super T> subscriber){
+
+        public void onSubscriber(Subscriber<? super T> subscriber) {
             this.mSubscriber = subscriber;
         }
-        public abstract  void onStart();
-        public abstract  void onStop();
-        public void onError(Throwable error){
+
+        public abstract void onStart();
+
+        public abstract void onStop();
+
+        public void onError(Throwable error) {
             mSubscriber.onError(error);
         }
-        public void onStopClear(){
+
+        public void onStopClear() {
             mSubscriber = null;
         }
 
     }
-    public static  class   EventObservable <T> implements Observable.OnSubscribe<T>  {
+
+    public static class EventObservable<T> implements Observable.OnSubscribe<T> {
         EventSource mSource;
-        public EventObservable (EventSource<T> source){
+
+        public EventObservable(EventSource<T> source) {
             this.mSource = source;
         }
+
         @Override
         public void call(Subscriber<? super T> subscriber) {
             mSource.onSubscriber(subscriber);
@@ -461,8 +482,6 @@ public class ObservableCreator {
 
 
     }
-
-
 
 
 }
