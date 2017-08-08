@@ -7,11 +7,17 @@ import android.hardware.SensorManager;
 import android.support.v4.util.Pair;
 
 import com.orhanobut.logger.Logger;
+import com.ytjojo.http.exception.AuthException;
 
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
+import retrofit2.HttpException;
 import rx.Observable;
 import rx.Scheduler;
 import rx.Subscriber;
@@ -30,15 +36,9 @@ import rx.subscriptions.Subscriptions;
  */
 public class ObservableCreator {
 
-    public static final Observable.Transformer schedulersTransformer = new Observable.Transformer() {
-        @Override
-        public Object call(Object observable) {
-            return ((Observable) observable).subscribeOn(Schedulers.newThread())
-                    .observeOn(AndroidSchedulers.mainThread());
-        }
-    };
 
-    public <T> Observable<T> periodically(long INITIAL_DELAY, long POLLING_INTERVAL, Func0<T> func0) {
+
+    public static <T> Observable<T> periodically(long INITIAL_DELAY, long POLLING_INTERVAL, Func0<T> func0) {
         return Observable.create(new Observable.OnSubscribe<T>() {
             Subscription subscription;
 
@@ -59,12 +59,81 @@ public class ObservableCreator {
         });
     }
 
-    private static <T> Observable.Transformer<T, T> applySchedulers() {
+    public static Func1<Observable<? extends Throwable>, Observable<?>> getRetryFunc1(){
+        return new Func1<Observable<? extends Throwable>, Observable<?>>() {
+            private int retryDelaySecond =5;
+            private int retryCount =0;
+            private int maxRetryCount =3;
+            @Override
+            public Observable<?> call(Observable<? extends Throwable> observable) {
+                return observable.flatMap(new Func1<Throwable, Observable<?>>() {
+                    @Override
+                    public Observable<?> call(Throwable throwable) {
+                        return checkApiError(throwable);
+                    }
+                });
+            }
+            private Observable<?> checkApiError(Throwable throwable) {
+                retryCount++;
+                System.out.println(retryCount+"retryCount--"+Thread.currentThread().getName());
+                if(throwable instanceof ConnectException
+                        || throwable instanceof SocketTimeoutException
+                        || throwable instanceof TimeoutException || throwable instanceof UnknownHostException) {
+                    if (retryCount < maxRetryCount) {
+                        retryCount = maxRetryCount;
+                        return retry(throwable);
+                    }
+                }else if(throwable instanceof HttpException){
+                    HttpException he = (HttpException) throwable;
+                    if(he.code()==401||he.code() ==403||he.code() == 409){
+                        if(retryCount>maxRetryCount){
+                            login();
+                            return Observable.error(new AuthException(throwable));
+                        }else{
+                            return retry(throwable);
+                        }
+
+                    }
+                }else if(throwable instanceof AuthException){
+                    login();
+                }
+                return Observable.error(throwable);
+            }
+
+            /**
+             *
+             * @param throwable
+             * @return
+             */
+            private Observable<?> retry(Throwable throwable) {
+                if(retryCount<=maxRetryCount){
+                    return  Observable.timer(retryDelaySecond,
+                            TimeUnit.SECONDS).observeOn(Schedulers.io());
+                }else{
+                    return  Observable.error(throwable);
+                }
+            }
+            private void login(){
+
+            }
+        };
+    }
+
+    public static <T> Observable.Transformer<T, T> applySchedulers() {
         return new Observable.Transformer<T, T>() {
             @Override
             public Observable<T> call(Observable<T> observable) {
                 return observable.subscribeOn(Schedulers.io())
-                        .observeOn(Schedulers.computation());
+                        .observeOn(AndroidSchedulers.mainThread()).retryWhen(getRetryFunc1());
+            }
+        };
+    }
+    public static <T> Observable.Transformer<T, T> applySchedulersNewThread() {
+        return new Observable.Transformer<T, T>() {
+            @Override
+            public Observable<T> call(Observable<T> observable) {
+                return observable.subscribeOn(Schedulers.io())
+                        .observeOn(Schedulers.newThread());
             }
         };
     }

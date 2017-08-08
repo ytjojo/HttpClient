@@ -6,7 +6,6 @@ package com.ytjojo.http;
 public class ResponseWrapper<T> {
     public static int RESULT_OK =200;
     public static int EXCEPTION_CCONVERT_JSON =-1;
-    public static int EXCEPTION_TOKEN_NOTVALID = 609;
     public int code;
     public String msg;
     public T body;

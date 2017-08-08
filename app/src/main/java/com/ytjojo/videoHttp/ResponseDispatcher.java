@@ -259,7 +259,7 @@ public class ResponseDispatcher {
      * @return
      */
     public ResponseDispatcher connectTimeout(int connect,int read$write){
-        mOkHttpClient= OkHttpClientBuilder.builder(null).connectTimeout(connect, TimeUnit.SECONDS).readTimeout(read$write,TimeUnit.SECONDS)
+        mOkHttpClient= OkHttpClientBuilder.builder(null,null).connectTimeout(connect, TimeUnit.SECONDS).readTimeout(read$write,TimeUnit.SECONDS)
         .writeTimeout(read$write,TimeUnit.SECONDS).build();
         return this;
     }

@@ -22,10 +22,11 @@ import com.google.gson.TypeAdapter;
 import com.google.gson.internal.$Gson$Types;
 import com.ytjojo.http.ResponseWrapper;
 import com.ytjojo.http.exception.APIException;
-import com.ytjojo.http.exception.TokenInvalidException;
 import com.ytjojo.http.util.TextUtils;
+
 import java.io.IOException;
 import java.lang.reflect.Type;
+
 import okhttp3.ResponseBody;
 import okio.BufferedSource;
 import okio.Okio;
@@ -58,16 +59,15 @@ final class GsonResponseBodyConverter<T> implements Converter<ResponseBody, T> {
 		JsonElement msgJE = response.get("msg");
 		String msg = msgJE == null ? null : msgJE.getAsString();
 		if (code != ResponseWrapper.RESULT_OK) {
-			if (code == ResponseWrapper.EXCEPTION_TOKEN_NOTVALID) {
-				throw new TokenInvalidException(code, msg);
-			} else {
-				//返回的code不是RESULT_OK时Toast显示msg
-				throw new APIException(code, msg, value);
-			}
+			throw new APIException(code, msg, value);
 		}
 		if (type instanceof Class) {
 			if (type == String.class) {
-				return (T) value;
+				JsonElement bodyJson = response.get("body");
+				return bodyJson!=null?(T)bodyJson.getAsString():null;
+			}
+			if (type == Void.class) {
+				return null;
 			}
 			if (type == JsonObject.class) {
 				//如果返回结果是JSONObject则无需经过Gson

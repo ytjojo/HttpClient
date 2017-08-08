@@ -1,11 +1,13 @@
 package com.ytjojo.http.interceptor;
 
 import com.ytjojo.http.exception.AuthException;
+
+import org.json.JSONException;
+
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -13,8 +15,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
-
-import org.json.JSONException;
 
 //https://github.com/alighters/AndroidDemos/blob/master/app/src/main/java/com/lighters/demos/token/http/api/ErrorCode.java
 public class HeaderInterceptor implements Interceptor {
@@ -52,6 +52,10 @@ public class HeaderInterceptor implements Interceptor {
             String value = mTokenCallable.call();
             if(value !=null){
                 mHeaders.put(mTokenCallable.key(),value);
+                HashMap<String,String> extraHeaders= mTokenCallable.extraHeaders();
+                if(extraHeaders !=null && !extraHeaders.isEmpty()){
+                    mHeaders.putAll(extraHeaders);
+                }
             }else{
                 throw new AuthException("HeaderCallable.call()获得的headervalue为null");
             }

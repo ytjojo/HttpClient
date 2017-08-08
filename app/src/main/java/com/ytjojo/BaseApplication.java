@@ -5,6 +5,7 @@ import android.content.Context;
 import android.support.multidex.MultiDex;
 import android.util.Log;
 import android.widget.TextView;
+
 import com.github.promeg.xlog_android.lib.XLogConfig;
 import com.orhanobut.logger.Logger;
 import com.orhanobut.logger.Settings;
@@ -12,6 +13,7 @@ import com.promegu.xlog.base.XLogMethod;
 import com.ytjojo.http.RetrofitClient;
 import com.ytjojo.practice.BuildConfig;
 import com.ytjojo.practice.R;
+
 import java.util.ArrayList;
 import java.util.List;
 

@@ -13,10 +13,8 @@ import okhttp3.Response;
  * Created by Administrator on 2016/12/18 0018.
  */
 public class CacheControInterceptor implements Interceptor {
-    final int cacheTime;
     Context context;
-    public CacheControInterceptor(Context context,int cacheTime){
-        this.cacheTime = cacheTime;
+    public CacheControInterceptor(Context context){
         this.context = context.getApplicationContext();
     }
 

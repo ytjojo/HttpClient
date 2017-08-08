@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import com.ytjojo.http.cache.CacheInterceptor;
+import com.ytjojo.http.interceptor.CacheControInterceptor;
 
 import java.io.File;
 import java.util.concurrent.TimeUnit;
@@ -20,7 +21,7 @@ public class OkHttpClientBuilder {
     }
 
 
-    public static OkHttpClient.Builder builder(Context c) {
+    public static OkHttpClient.Builder builder(Context c,File cacheDir) {
         HttpLoggingInterceptor logging = new HttpLoggingInterceptor(new HttpLoggingInterceptor.Logger() {
             @Override
             public void log(String message) {
@@ -41,10 +42,12 @@ public class OkHttpClientBuilder {
 
         if (c != null) {
             int maxCacheSize = 15 * 1024 * 1024;
-            Cache cache = new Cache(new File(c.getApplicationContext().getCacheDir(), "httpGet"), maxCacheSize);
+            File parent = cacheDir ==null ?c.getApplicationContext().getCacheDir():cacheDir;
+            Cache cache = new Cache(new File(parent, "httpGet"), maxCacheSize);
+            builder.addInterceptor(new CacheControInterceptor(c));
             builder.cache(cache)
                     .cookieJar(new CookiesManager(c))
-                    .addInterceptor(new CacheInterceptor(new com.ytjojo.http.cache.Cache(new File(c.getCacheDir(), "httpPost"), 20 * 1024 * 1024)));
+                    .addInterceptor(new CacheInterceptor(new com.ytjojo.http.cache.Cache(new File(parent, "httpPost"), 20 * 1024 * 1024)));
         }
         return builder;
 

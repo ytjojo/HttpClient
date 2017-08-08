@@ -3,16 +3,22 @@ package com.ytjojo.http;
 import android.content.Context;
 import android.support.annotation.Nullable;
 import android.support.v4.util.Pair;
+
 import com.ytjojo.http.coverter.GsonConverterFactory;
 import com.ytjojo.http.https.HttpsDelegate;
+import com.ytjojo.http.https.UnSafeHostnameVerifier;
 import com.ytjojo.http.interceptor.HeaderCallable;
 import com.ytjojo.http.interceptor.HeaderInterceptor;
+
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
+
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.X509TrustManager;
+
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import retrofit2.ProxyHandler;
@@ -60,6 +66,9 @@ public class RetrofitClient {
     public static void init(@Nullable Context c,String baseUrl){
         mDefaultRetrofitClient = RetrofitClient.newBuilder(c).unsafeSSLSocketFactory().baseUrl(baseUrl).build();
     }
+    public static void init(Builder builder){
+        mDefaultRetrofitClient = builder.unsafeSSLSocketFactory().build();
+    }
     public static void setDefault(RetrofitClient client){
         mDefaultRetrofitClient = client;
     }
@@ -81,7 +90,7 @@ public class RetrofitClient {
         int connectTimeout;
         Pair<SSLSocketFactory, X509TrustManager> sslFactory;
         HeaderCallable headerCallable;
-
+        File cache;
 
         public Builder(Context context){
            this.context =  context.getApplicationContext();
@@ -92,6 +101,10 @@ public class RetrofitClient {
         }
         public Builder headers(HashMap<String,String> headers){
             this.headers = headers;
+            return this;
+        }
+        public Builder cache(File cache){
+            this.cache = cache;
             return this;
         }
         public Builder writeTimeout(int writeTimeout){
@@ -142,7 +155,7 @@ public class RetrofitClient {
             return this;
         }
         public RetrofitClient build(){
-            OkHttpClient.Builder builder = OkHttpClientBuilder.builder(context);
+            OkHttpClient.Builder builder = OkHttpClientBuilder.builder(context,cache);
             if(baseUrl ==null){
                 throw new IllegalArgumentException("baseUrl can't be null");
             }
@@ -158,6 +171,7 @@ public class RetrofitClient {
             }
             if(sslFactory != null){
                 builder.sslSocketFactory(sslFactory.first,sslFactory.second);
+                builder.hostnameVerifier(new UnSafeHostnameVerifier());
             }
             HeaderInterceptor headerInterceptor= new HeaderInterceptor(headerCallable,baseUrl);
             if(headers !=null){
