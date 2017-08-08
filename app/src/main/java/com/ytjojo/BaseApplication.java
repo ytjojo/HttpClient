@@ -23,7 +23,7 @@ public class BaseApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        RetrofitClient.init(this,"http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/*.jsonRequest");
+        RetrofitClient.init(this,"http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/");
         sInstance = this;
         List<XLogMethod> xLogMethods = new ArrayList<>();
         xLogMethods.add(new XLogMethod(TextView.class, "setText"));
