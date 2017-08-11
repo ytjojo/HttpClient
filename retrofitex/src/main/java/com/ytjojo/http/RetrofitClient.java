@@ -21,6 +21,7 @@ import javax.net.ssl.X509TrustManager;
 
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
+import retrofit2.Converter;
 import retrofit2.ProxyHandler;
 import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava.RxJavaCallAdapterFactory;
@@ -91,6 +92,7 @@ public class RetrofitClient {
         Pair<SSLSocketFactory, X509TrustManager> sslFactory;
         HeaderCallable headerCallable;
         File cache;
+        Converter.Factory factory;
 
         public Builder(Context context){
            this.context =  context.getApplicationContext();
@@ -142,6 +144,10 @@ public class RetrofitClient {
            this.sslFactory =  HttpsDelegate.getUnsafeSslSocketFactory(certificates);
             return this;
         }
+        public Builder addConverterFactory(Converter.Factory factory){
+           this.factory = factory;
+            return this;
+        }
 
         /**
          *  使用bks证书和密码管理客户端证书（双向认证），使用预埋证书，校验服务端证书（自签名证书）
@@ -177,12 +183,13 @@ public class RetrofitClient {
             if(headers !=null){
                 headerInterceptor.putHeaders(headers);
             }
+            this.factory = factory ==null?GsonConverterFactory.create():factory;
             builder.addInterceptor(headerInterceptor);
             Retrofit  retrofit = new Retrofit.Builder()
             .baseUrl(baseUrl)
             .client(builder.build())
             .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(factory)
             .build();
             return new RetrofitClient(retrofit,headerInterceptor);
         }

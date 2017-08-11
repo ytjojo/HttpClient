@@ -2,8 +2,7 @@ package com.ytjojo.app;
 
 import android.app.Application;
 import android.content.Context;
-import android.widget.ScrollView;
-import com.ytjojo.anim.behavior.NestedScrollViewBehavior;
+
 import java.lang.reflect.Method;
 /**
  * Created by kkmike999 on 2016/05/26.

@@ -1,14 +1,11 @@
 package com.ytjojo.rx;
 
 import android.content.Context;
-import android.content.res.Resources;
-import android.support.v4.util.LruCache;
 
 import com.ytjojo.http.cache.ACache;
 
 import java.io.File;
 import java.io.Serializable;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 
 import rx.Observable;
@@ -93,7 +90,7 @@ public class RxCache {
         Object target = mTagMap.get(clazz.getName());
 
         if (target == null) {
-            return ObservableCreator.createDefer(new Func0<Observable<Serializable>>() {
+            return RxCreator.createDefer(new Func0<Observable<Serializable>>() {
                 @Override
                 public Observable<Serializable> call() {
                     Serializable value = (Serializable) mACache.getAsObject(clazz.getName());

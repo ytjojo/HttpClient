@@ -24,6 +24,7 @@ public class HeaderInterceptor implements Interceptor {
     private final CountDownLatch mCountDownLatch = new CountDownLatch(1);
     private final String baseUrl;
     AtomicInteger mRefreshTokenFlag =new AtomicInteger(0);
+    volatile boolean restoreCachedValue ;
     public void putHeader(String key,String value){
         if(key !=null && value !=null)
         mHeaders.put(key,value);
@@ -144,6 +145,21 @@ public class HeaderInterceptor implements Interceptor {
             return request;
         }
         final Request.Builder requestBuilder = request.newBuilder();
+        if(mTokenCallable !=null&&!restoreCachedValue){
+            synchronized (HeaderInterceptor.class){
+                if(!restoreCachedValue){
+                    if(mHeaders.get(mTokenCallable.key())==null){
+                        String cachedValue = mTokenCallable.getCachedValue();
+                        if(cachedValue!=null){
+                            mHeaders.put(mTokenCallable.key(),cachedValue);
+                        }
+                    }
+                    restoreCachedValue = true;
+                }
+            }
+
+
+        }
         for(HashMap.Entry<String,String> entry:mHeaders.entrySet()){
             String key = entry.getKey();
             String value = entry.getValue();

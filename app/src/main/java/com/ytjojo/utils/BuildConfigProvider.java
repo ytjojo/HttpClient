@@ -41,6 +41,7 @@ public class BuildConfigProvider {
                 final Method getApplication = activityThreadClass.getDeclaredMethod("getApplication");
                 final Application application = (Application) getApplication.invoke(activityThread);
                 sContext = application.getApplicationContext();
+                packageName = getContext().getPackageName();
             } catch (Exception e) {
                 e.printStackTrace();
             }

@@ -23,5 +23,7 @@ public abstract class HeaderCallable implements Callable<String> {
     public abstract String key();
 
     public abstract boolean isExpired(int code , Response response);
+
+    public abstract String getCachedValue();
     public abstract HashMap<String,String> extraHeaders();
 }

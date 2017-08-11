@@ -28,7 +28,7 @@ import com.ytjojo.domin.vo.LoginResponse;
 import com.ytjojo.http.GitApiInterface;
 import com.ytjojo.http.RetrofitClient;
 import com.ytjojo.practice.R;
-import com.ytjojo.rx.ObservableCreator;
+import com.ytjojo.rx.RxCreator;
 import com.ytjojo.utils.DensityUtil;
 import rx.Subscriber;
 
@@ -120,7 +120,7 @@ public class MainActivity extends AppCompatActivity {
     private void login() {
         GitApiInterface gitApiInterface = RetrofitClient.getDefault().create(com.ytjojo.http.GitApiInterface.class);
         LoginRequest request = new LoginRequest();
-        gitApiInterface.loginAttr(request.uid,request.pwd,request.rid,request.forAccessToken).compose(ObservableCreator.applySchedulersIO()).subscribe(new Subscriber<LoginResponse>() {
+        gitApiInterface.loginAttr(request.uid,request.pwd,request.rid,request.forAccessToken).compose(RxCreator.applySchedulersIO()).subscribe(new Subscriber<LoginResponse>() {
             @Override
             public void onCompleted() {
 
@@ -144,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
     private void getAddrArea() {
         GitApiInterface gitApiInterface = RetrofitClient.getDefault().create(GitApiInterface.class);
         LoginRequest request = new LoginRequest();
-        gitApiInterface.getAddrArea(null,0).compose(ObservableCreator.applySchedulersIO()).subscribe(new Subscriber<JsonObject>() {
+        gitApiInterface.getAddrArea(null,0).compose(RxCreator.applySchedulersIO()).subscribe(new Subscriber<JsonObject>() {
             @Override
             public void onCompleted() {
 
@@ -166,7 +166,7 @@ public class MainActivity extends AppCompatActivity {
     }
     private void testGetDic(){
         GitApiInterface gitApiInterface = RetrofitClient.getDefault().create(GitApiInterface.class);
-        gitApiInterface.getHealthCardTypeDict().compose(ObservableCreator.applySchedulersIO()).subscribe(new Subscriber<JsonObject>() {
+        gitApiInterface.getHealthCardTypeDict().compose(RxCreator.applySchedulersIO()).subscribe(new Subscriber<JsonObject>() {
             @Override public void onCompleted() {
 
             }
@@ -184,7 +184,7 @@ public class MainActivity extends AppCompatActivity {
     private void testArray(){
         mBegin = System.currentTimeMillis();
         GitApiInterface gitApiInterface = RetrofitClient.getDefault().create(GitApiInterface.class);
-        gitApiInterface.loginWithArray("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/*.jsonRequest",1).compose(ObservableCreator.applySchedulersIO()).subscribe(new Subscriber<OrganAddrArea>() {
+        gitApiInterface.loginWithArray("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/*.jsonRequest",1).compose(RxCreator.applySchedulersIO()).subscribe(new Subscriber<OrganAddrArea>() {
             @Override
             public void onCompleted() {
 

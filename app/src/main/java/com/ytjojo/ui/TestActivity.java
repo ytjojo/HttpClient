@@ -15,7 +15,7 @@ import android.view.WindowManager;
 import android.widget.Toast;
 
 import com.ytjojo.practice.R;
-import com.ytjojo.rx.ObservableCreator;
+import com.ytjojo.rx.RxCreator;
 
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -39,7 +39,7 @@ public class TestActivity extends BaseActivity {
         setSetStatusbarColor2(this,getResources().getColor(R.color.colorPrimaryDark),ss);
         ViewGroup mContentView = (ViewGroup) getWindow().findViewById(Window.ID_ANDROID_CONTENT);
 
-        ObservableCreator.getAsyncObservable(new IntegerThread()).observeOn(AndroidSchedulers.mainThread());
+        RxCreator.getAsyncObservable(new IntegerThread()).observeOn(AndroidSchedulers.mainThread());
     }
     public void setStatusbarColor1(){
         if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.KITKAT){
@@ -115,7 +115,7 @@ public class TestActivity extends BaseActivity {
         }
         return 0;
     }
-    public static class IntegerThread extends   ObservableCreator.EventSource<Integer>{
+    public static class IntegerThread extends   RxCreator.EventSource<Integer>{
         Thread mThread;
         AtomicBoolean mAtomicBoolean = new AtomicBoolean(true);
         int mInt =0;
