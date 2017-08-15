@@ -1,9 +1,11 @@
 package com.ytjojo.http;
 
+import java.io.Serializable;
+
 /**
  * Created by Administrator on 2016/10/18 0018.
  */
-public class ResponseWrapper<T> {
+public class ResponseWrapper<T> implements Serializable{
     public static int RESULT_OK =200;
     public static int EXCEPTION_CCONVERT_JSON =-1;
     public int code;

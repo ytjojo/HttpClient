@@ -17,6 +17,10 @@ public class AuthException extends RuntimeException {
         super(msg,throwable);
         this.code = code;
     }
+    public AuthException(int code,Throwable throwable) {
+        super(throwable);
+        this.code = code;
+    }
     public int getCode(){
         return code;
     }

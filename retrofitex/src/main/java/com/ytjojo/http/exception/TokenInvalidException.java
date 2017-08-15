@@ -18,6 +18,7 @@ public class TokenInvalidException extends RuntimeException {
     }
     public TokenInvalidException(int code, String msg) {
         super(msg);
+        this.code = code;
     }
     public int getCode(){
         return code;

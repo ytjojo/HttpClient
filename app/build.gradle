@@ -164,16 +164,15 @@ dependencies {
 //        compile project(':component')
 //    }
     compile fileTree(dir: 'libs', include: ['*.jar'])
-    testCompile project(':androidmock')
     compile project(':retrofitex')
     compile 'com.android.support:multidex:1.0.1'
     compile 'com.android.support:appcompat-v7:23.4.0'
 //    releaseCompile project(path: ':domain', configuration: 'release')
 //    debugCompile project(path: ':domain', configuration: 'debug')
-    compile 'com.android.support:design:23.4.0'
-    compile 'com.android.support:recyclerview-v7:23.4.0'
-    compile 'com.android.support:cardview-v7:23.4.0'
-    compile 'com.android.support:support-annotations:23.4.0'
+    compile 'com.android.support:design:25.2.0'
+    compile 'com.android.support:recyclerview-v7:25.2.0'
+    compile 'com.android.support:cardview-v7:25.2.0'
+    compile 'com.android.support:support-annotations:25.2.0'
     compile 'org.greenrobot:eventbus:3.0.0'
     //rx
     compile 'io.reactivex:rxandroid:1.2.1'
@@ -216,8 +215,6 @@ dependencies {
     debugCompile 'com.github.promeg:xlog-compiler:2.1.1' // ~6kB
     debugCompile 'com.github.promeg:xlog-android:2.1.1' // ~150kB
     releaseCompile 'com.github.promeg:xlog-android-idle:2.1.1' // ~5kB
-//    androidTestCompile 'com.android.support.test:runner:0.5'
-//    androidTestCompile 'com.android.support.test:rules:0.5'
 
     //design
     compile 'com.dmitrymalkovich.android:material-design-dimens:1.2'
@@ -247,29 +244,29 @@ dependencies {
 ////            exclude group: it
 ////        }
 //    }
-    //UI
-    testCompile 'org.robolectric:robolectric:3.0'
-    // Dependencies for local unit tests
-    testCompile 'com.squareup.retrofit2:retrofit-mock:2.3.0'
-    testCompile "junit:junit:$rootProject.ext.junitVersion"
-    testCompile "org.mockito:mockito-all:$rootProject.ext.mockitoVersion"
-    testCompile "org.hamcrest:hamcrest-all:$rootProject.ext.hamcrestVersion"
-    testCompile("org.powermock:powermock-module-junit4:1.6.2")
-    testCompile "org.powermock:powermock-module-junit4-rule:1.6.2"
-    testCompile "org.powermock:powermock-api-mockito:1.6.2"
-    testCompile "org.powermock:powermock-classloading-xstream:1.6.2"
-    testCompile 'com.squareup.okhttp3:mockwebserver:3.8.1'
-    // Espresso UI Testing
-    androidTestCompile "com.android.support.test:runner:$rootProject.runnerVersion"
-    androidTestCompile "com.android.support.test:rules:$rootProject.rulesVersion"
-    androidTestCompile "com.android.support.test.espresso:espresso-core:$rootProject.espressoVersion"
-    androidTestCompile "com.android.support.test.espresso:espresso-contrib:$rootProject.espressoVersion"
-    androidTestCompile "com.android.support.test.espresso:espresso-intents:$rootProject.espressoVersion"
-
-    // Resolve conflicts between main and test APK:
-    androidTestCompile "com.android.support:support-annotations:$rootProject.supportLibraryVersion"
-    androidTestCompile "com.android.support:support-v4:$rootProject.supportLibraryVersion"
-    androidTestCompile "com.android.support:recyclerview-v7:$rootProject.supportLibraryVersion"
+//    //UI
+//    testCompile 'org.robolectric:robolectric:3.0'
+//    // Dependencies for local unit tests
+//    testCompile 'com.squareup.retrofit2:retrofit-mock:2.3.0'
+//    testCompile "junit:junit:$rootProject.ext.junitVersion"
+//    testCompile "org.mockito:mockito-all:$rootProject.ext.mockitoVersion"
+//    testCompile "org.hamcrest:hamcrest-all:$rootProject.ext.hamcrestVersion"
+//    testCompile("org.powermock:powermock-module-junit4:1.6.2")
+//    testCompile "org.powermock:powermock-module-junit4-rule:1.6.2"
+//    testCompile "org.powermock:powermock-api-mockito:1.6.2"
+//    testCompile "org.powermock:powermock-classloading-xstream:1.6.2"
+//    testCompile 'com.squareup.okhttp3:mockwebserver:3.8.1'
+//    // Espresso UI Testing
+//    androidTestCompile "com.android.support.test:runner:$rootProject.runnerVersion"
+//    androidTestCompile "com.android.support.test:rules:$rootProject.rulesVersion"
+//    androidTestCompile "com.android.support.test.espresso:espresso-core:$rootProject.espressoVersion"
+//    androidTestCompile "com.android.support.test.espresso:espresso-contrib:$rootProject.espressoVersion"
+//    androidTestCompile "com.android.support.test.espresso:espresso-intents:$rootProject.espressoVersion"
+//
+//    // Resolve conflicts between main and test APK:
+//    androidTestCompile "com.android.support:support-annotations:$rootProject.supportLibraryVersion"
+//    androidTestCompile "com.android.support:support-v4:$rootProject.supportLibraryVersion"
+//    androidTestCompile "com.android.support:recyclerview-v7:$rootProject.supportLibraryVersion"
 
 }
 configurations {

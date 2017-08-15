@@ -1,1 +1,1 @@
-include ':app', ':androidmock', ':retrofitex'
+include ':app', ':retrofitex'
