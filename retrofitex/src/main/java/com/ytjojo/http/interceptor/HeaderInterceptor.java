@@ -189,7 +189,7 @@ public class HeaderInterceptor implements Interceptor {
 //
 //        JSONObject jsonObject = new JSONObject(bodyValue);
 //        int code = jsonObject.optInt("code");
-//        if(code == ResponseWrapper.EXCEPTION_TOKEN_NOTVALID){
+//        if(code == ServerResponse.EXCEPTION_TOKEN_NOTVALID){
 //            return true;
 //        }
         return false;

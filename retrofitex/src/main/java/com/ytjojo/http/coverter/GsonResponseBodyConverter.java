@@ -20,7 +20,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.TypeAdapter;
 import com.google.gson.internal.$Gson$Types;
-import com.ytjojo.http.ResponseWrapper;
+import com.ytjojo.http.ServerResponse;
 import com.ytjojo.http.exception.APIException;
 import com.ytjojo.http.util.TextUtils;
 
@@ -58,7 +58,7 @@ final class GsonResponseBodyConverter<T> implements Converter<ResponseBody, T> {
 		int code = response.get("code").getAsInt();
 		JsonElement msgJE = response.get("msg");
 		String msg = msgJE == null ? null : msgJE.getAsString();
-		if (code != ResponseWrapper.RESULT_OK) {
+		if (code != ServerResponse.RESULT_OK) {
 			throw new APIException(code, msg, value);
 		}
 		if (type instanceof Class) {
@@ -73,9 +73,9 @@ final class GsonResponseBodyConverter<T> implements Converter<ResponseBody, T> {
 				//如果返回结果是JSONObject则无需经过Gson
 				return (T)(response);
 			}
-			if(!(ResponseWrapper.class.isAssignableFrom((Class<?>) type))){
-				Type wrapperType = $Gson$Types.newParameterizedTypeWithOwner(null,ResponseWrapper.class,type);
-				ResponseWrapper<?> wrapper = mGson.fromJson(value, wrapperType);
+			if(!(ServerResponse.class.isAssignableFrom((Class<?>) type))){
+				Type wrapperType = $Gson$Types.newParameterizedTypeWithOwner(null,ServerResponse.class,type);
+				ServerResponse<?> wrapper = mGson.fromJson(value, wrapperType);
 				return (T) wrapper.body;
 			}
 		}

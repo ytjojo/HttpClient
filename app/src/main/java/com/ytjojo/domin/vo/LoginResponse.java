@@ -1,12 +1,12 @@
 package com.ytjojo.domin.vo;
 
-import com.ytjojo.http.ResponseWrapper;
+import com.ytjojo.http.ServerResponse;
 
 
 /**
  * Created by Administrator on 2016/10/27 0027.
  */
-public class LoginResponse extends ResponseWrapper<LoginResponse.UserRoles> {
+public class LoginResponse extends ServerResponse<LoginResponse.UserRoles> {
 
 
     public LoginResponse(int code, String msg, LoginResponse.UserRoles data) {

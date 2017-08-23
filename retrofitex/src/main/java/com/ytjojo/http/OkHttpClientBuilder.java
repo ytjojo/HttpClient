@@ -1,8 +1,8 @@
 package com.ytjojo.http;
 
 import android.content.Context;
-import android.util.Log;
 
+import com.orhanobut.logger.Logger;
 import com.ytjojo.http.cache.CacheInterceptor;
 import com.ytjojo.http.interceptor.CacheControInterceptor;
 
@@ -26,7 +26,7 @@ public class OkHttpClientBuilder {
             @Override
             public void log(String message) {
                 if (Platform.get() == Platform.Android) {
-                    Log.e("http", message);
+                    Logger.i("http", message);
                 } else {
                     System.out.println("http =====  :  " + message);
                 }

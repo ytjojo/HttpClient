@@ -6,12 +6,12 @@ import java.io.IOException;
  * Created by Administrator on 2017/8/7 0007.
  */
 
-public class ConnectException extends IOException {
+public class NetException extends IOException {
 
     /**
      * Constructs a new {@code IOException} with its stack trace filled in.
      */
-    public ConnectException() {
+    public NetException() {
     }
 
     /**
@@ -21,7 +21,7 @@ public class ConnectException extends IOException {
      * @param detailMessage
      *            the detail message for this exception.
      */
-    public ConnectException(String detailMessage) {
+    public NetException(String detailMessage) {
         super(detailMessage);
     }
 
@@ -35,7 +35,7 @@ public class ConnectException extends IOException {
      *            The detail cause for the exception.
      * @since 1.6
      */
-    public ConnectException(String message, Throwable cause) {
+    public NetException(String message, Throwable cause) {
         super(message, cause);
     }
 
@@ -46,7 +46,7 @@ public class ConnectException extends IOException {
      *            The detail cause for the exception.
      * @since 1.6
      */
-    public ConnectException(Throwable cause) {
+    public NetException(Throwable cause) {
         super(cause == null ? null : cause.toString(), cause);
     }
 }
