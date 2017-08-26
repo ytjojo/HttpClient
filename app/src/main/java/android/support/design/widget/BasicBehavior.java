@@ -127,7 +127,7 @@ public class BasicBehavior<T extends View> extends CoordinatorLayout.Behavior<T>
                 mFabTranslationYAnimator = ViewUtils.createAnimator();
                 mFabTranslationYAnimator.setInterpolator(
                         AnimationUtils.FAST_OUT_SLOW_IN_INTERPOLATOR);
-                mFabTranslationYAnimator.setUpdateListener(
+                mFabTranslationYAnimator.addUpdateListener(
                         new ValueAnimatorCompat.AnimatorUpdateListener() {
                             @Override
                             public void onAnimationUpdate(ValueAnimatorCompat animator) {

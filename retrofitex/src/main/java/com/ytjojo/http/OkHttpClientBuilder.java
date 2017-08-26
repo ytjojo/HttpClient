@@ -22,19 +22,8 @@ public class OkHttpClientBuilder {
 
 
     public static OkHttpClient.Builder builder(Context c,File cacheDir) {
-        HttpLoggingInterceptor logging = new HttpLoggingInterceptor(new HttpLoggingInterceptor.Logger() {
-            @Override
-            public void log(String message) {
-                if (Platform.get() == Platform.Android) {
-                    Logger.i("http", message);
-                } else {
-                    System.out.println("http =====  :  " + message);
-                }
-            }
-        });
-        // set your desired log level
-        logging.setLevel(HttpLoggingInterceptor.Level.BODY);
-        OkHttpClient.Builder builder = new OkHttpClient.Builder().addInterceptor(logging)
+
+        OkHttpClient.Builder builder = new OkHttpClient.Builder()
                 .retryOnConnectionFailure(true)
                 .connectTimeout(15, TimeUnit.SECONDS)
                 .readTimeout(15, TimeUnit.SECONDS)

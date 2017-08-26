@@ -4,6 +4,7 @@ import android.content.Context;
 import android.support.annotation.Nullable;
 import android.support.v4.util.Pair;
 
+import com.orhanobut.logger.Logger;
 import com.ytjojo.http.coverter.GsonConverterFactory;
 import com.ytjojo.http.https.HttpsDelegate;
 import com.ytjojo.http.https.UnSafeHostnameVerifier;
@@ -21,6 +22,7 @@ import javax.net.ssl.X509TrustManager;
 
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
+import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Converter;
 import retrofit2.ProxyHandler;
 import retrofit2.Retrofit;
@@ -93,9 +95,28 @@ public class RetrofitClient {
         HeaderCallable headerCallable;
         File cache;
         Converter.Factory factory;
+        HttpLoggingInterceptor logging;
 
         public Builder(Context context){
            this.context =  context.getApplicationContext();
+        }
+        public Builder showLog(boolean showLog){
+            if(!showLog){
+                return this;
+            }
+            this.logging = new HttpLoggingInterceptor(new HttpLoggingInterceptor.Logger() {
+                @Override
+                public void log(String message) {
+                    if (Platform.get() == Platform.Android) {
+                        Logger.e("http",message);
+                    } else {
+                        System.out.println("http =====  :  " + message);
+                    }
+                }
+            });
+            // set your desired log level
+            logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+            return this;
         }
         public Builder baseUrl(String baseUrl){
             this.baseUrl = baseUrl;
@@ -162,6 +183,9 @@ public class RetrofitClient {
         }
         public RetrofitClient build(){
             OkHttpClient.Builder builder = OkHttpClientBuilder.builder(context,cache);
+            if(logging !=null){
+                builder.addInterceptor(logging);
+            }
             if(baseUrl ==null){
                 throw new IllegalArgumentException("baseUrl can't be null");
             }
