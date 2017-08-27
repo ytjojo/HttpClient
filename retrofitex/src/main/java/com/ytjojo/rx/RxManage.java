@@ -1,5 +1,7 @@
 package com.ytjojo.rx;
 
+import com.trello.rxlifecycle.RxLifecycle;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -16,17 +18,15 @@ import rx.subscriptions.CompositeSubscription;
 public class RxManage {
 
     public RxBus mRxBus = RxBus.getDefault();
-    private Map<String, Observable<?>> mObservables = new HashMap<>();// 管理观察者
     private CompositeSubscription mCompositeSubscription = new CompositeSubscription();// 管理订阅者者
 
 
-    public <T> void onEvent(String tag, Class<T> clazz,Action1<T> action1) {
+    public <T> void register(String tag, Class<T> clazz,Action1<T> action1) {
         Observable<T> mObservable = mRxBus.register(tag,clazz);
-        mObservables.put(tag, mObservable);
-        mCompositeSubscription.add(mObservable.observeOn(AndroidSchedulers.mainThread())
+        mCompositeSubscription.add(mObservable
                 .subscribe(action1, (e) -> e.printStackTrace()));
     }
-    public <T> void onEvent(Class<T> clazz, Action1<T> action1){
+    public <T> void register(Class<T> clazz, Action1<T> action1){
         Observable<T> observable = mRxBus.register(clazz);
         mCompositeSubscription.add(observable.observeOn(AndroidSchedulers.mainThread()).subscribe(action1,(e) ->e.printStackTrace()));
     }
@@ -36,9 +36,6 @@ public class RxManage {
 
     public void clear() {
         mCompositeSubscription.unsubscribe();// 取消订阅
-        mObservables.clear();
-//        for (Map.Entry<String, Observable<?>> entry : mObservables.entrySet()) {
-//        }
     }
 
     public void post(String tag, Object content) {
