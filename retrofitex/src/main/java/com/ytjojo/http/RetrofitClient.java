@@ -93,6 +93,7 @@ public class RetrofitClient {
         HeaderCallable headerCallable;
         File cache;
         Converter.Factory factory;
+        OkHttpClient okHttpClient;
 
         public Builder(Context context){
            this.context =  context.getApplicationContext();
@@ -160,34 +161,43 @@ public class RetrofitClient {
            this.sslFactory =  HttpsDelegate.getSslSocketFactory(certificates,bksFile,password);
             return this;
         }
+        public Builder okhttpClient(OkHttpClient client){
+            this.okHttpClient = client;
+            return this;
+        }
         public RetrofitClient build(){
-            OkHttpClient.Builder builder = OkHttpClientBuilder.builder(context,cache);
-            if(baseUrl ==null){
-                throw new IllegalArgumentException("baseUrl can't be null");
-            }
-            if(connectTimeout>0){
-                builder.connectTimeout(connectTimeout, TimeUnit.SECONDS);
-            }
-            if(readTimeout>0){
-                builder.readTimeout(readTimeout, TimeUnit.SECONDS);
-            }
-            if(writeTimeout>0){
-                builder.writeTimeout(writeTimeout, TimeUnit.SECONDS);
+            HeaderInterceptor headerInterceptor = null;
+            if(okHttpClient == null){
+                OkHttpClient.Builder builder = OkHttpClientBuilder.builder(context,cache);
+                if(baseUrl ==null){
+                    throw new IllegalArgumentException("baseUrl can't be null");
+                }
+                if(connectTimeout>0){
+                    builder.connectTimeout(connectTimeout, TimeUnit.SECONDS);
+                }
+                if(readTimeout>0){
+                    builder.readTimeout(readTimeout, TimeUnit.SECONDS);
+                }
+                if(writeTimeout>0){
+                    builder.writeTimeout(writeTimeout, TimeUnit.SECONDS);
 
+                }
+                if(sslFactory != null){
+                    builder.sslSocketFactory(sslFactory.first,sslFactory.second);
+                    builder.hostnameVerifier(new UnSafeHostnameVerifier());
+                }
+               headerInterceptor = new HeaderInterceptor(headerCallable,baseUrl);
+                if(headers !=null){
+                    headerInterceptor.putHeaders(headers);
+                }
+                builder.addInterceptor(headerInterceptor);
+                this.okHttpClient = builder.build();
             }
-            if(sslFactory != null){
-                builder.sslSocketFactory(sslFactory.first,sslFactory.second);
-                builder.hostnameVerifier(new UnSafeHostnameVerifier());
-            }
-            HeaderInterceptor headerInterceptor= new HeaderInterceptor(headerCallable,baseUrl);
-            if(headers !=null){
-                headerInterceptor.putHeaders(headers);
-            }
+
             this.factory = factory ==null?GsonConverterFactory.create():factory;
-            builder.addInterceptor(headerInterceptor);
             Retrofit  retrofit = new Retrofit.Builder()
             .baseUrl(baseUrl)
-            .client(builder.build())
+            .client(okHttpClient)
             .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
             .addConverterFactory(factory)
             .build();
