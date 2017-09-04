@@ -5,17 +5,19 @@ import android.util.Log;
 
 import com.trello.rxlifecycle.LifecycleTransformer;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import rx.Observable;
+import rx.Subscriber;
 import rx.Subscription;
 import rx.android.schedulers.AndroidSchedulers;
-import rx.functions.Action1;
+import rx.exceptions.Exceptions;
+import rx.functions.Action0;
 import rx.subjects.PublishSubject;
 import rx.subjects.SerializedSubject;
 import rx.subjects.Subject;
+import rx.subscriptions.Subscriptions;
 
 /**
  * Author: wangjie
@@ -26,7 +28,6 @@ public class RxBus {
     private static final String TAG = RxBus.class.getSimpleName();
     private static volatile RxBus instance;
     public static boolean DEBUG = false;
-    HashMap<String,ArrayList<Action1>> classForSubscriptions;
 //    private final Relay<Object, Object> _bus = PublishRelay.create().toSerialized();
     SerializedSubject allBus;
     // 单例RxBus
@@ -46,50 +47,79 @@ public class RxBus {
 
     private RxBus() {
         allBus = new SerializedSubject<>(PublishSubject.create());
-        classForSubscriptions=new HashMap<>();
     }
 
     private ConcurrentHashMap<String, Subject> subjectMapper = new ConcurrentHashMap<>();
 
-    /**
-     * 订阅事件源
-     *
-     * @param mObservable
-     * @param mAction1
-     * @return
-     */
-    public RxBus OnEvent(Observable<?> mObservable, Action1<Object> mAction1) {
-        mObservable.observeOn(AndroidSchedulers.mainThread()).subscribe(mAction1, (e) -> e.printStackTrace());
-        return this;
-    }
     public <T> Observable<T> register( @NonNull Class<T> clazz) {
         return toObserverable(clazz);
     }
 
 
-    public <T> void registerOnEventLast( @NonNull final Class<T>  clazz,Action1<T> onEventAction) {
-        ArrayList<Action1> subscriptions=classForSubscriptions.get(clazz.getName());
-        if(subscriptions ==null){
-            subscriptions = new ArrayList<>();
-            classForSubscriptions.put(clazz.getName(),subscriptions);
-            toObserverable(clazz).subscribe(new Action1<T>() {
+
+    private ConcurrentHashMap<Class<?>, CopyOnWriteArrayList<Subscriber<?>>> subscribermaps = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<Class<?>, Subscriber<?>> typeOfSubscriber = new ConcurrentHashMap<>();
+    public <T> Observable<T> registerObservable(Class<T> clazz){
+        Subscriber<T> clazzSubscriber = (Subscriber<T>) typeOfSubscriber.get(clazz);
+        if(clazzSubscriber ==null){
+            clazzSubscriber = new Subscriber<T>() {
                 @Override
-                public void call(T t) {
-                    ArrayList<Action1> list = classForSubscriptions.get(clazz.getName());
-                    if(list !=null &&!list.isEmpty()){
-                        list.get(list.size()-1).call(t);
+                public void onCompleted() {
+                    final CopyOnWriteArrayList<Subscriber<?>> subscribers = subscribermaps.get(clazz);
+                    Subscriber lastsubscriber = subscribers.get(subscribers.size() - 1);
+                    lastsubscriber.onCompleted();
+                }
+
+                @Override
+                public void onError(Throwable e) {
+                    final CopyOnWriteArrayList<Subscriber<?>> subscribers = subscribermaps.get(clazz);
+                    Subscriber lastsubscriber = subscribers.get(subscribers.size() - 1);
+                    lastsubscriber.onError(e);
+                }
+
+                @Override
+                public void onNext(T t) {
+                    try {
+                        final CopyOnWriteArrayList<Subscriber<?>> subscribers = subscribermaps.get(clazz);
+                        Subscriber lastsubscriber = subscribers.get(subscribers.size() - 1);
+                        lastsubscriber.onNext(t);
+                    } catch (Throwable e) {
+                        Exceptions.throwOrReport(e, this, t);
                     }
                 }
-            });
+
+            };
+            toObserverable(clazz).subscribe(clazzSubscriber);
+            typeOfSubscriber.put(clazz,clazzSubscriber);
+
 
         }
-        subscriptions.add(onEventAction);
-    }
-    public <T> void unRegisterOnEventLast( @NonNull final Class<T>  clazz,Action1<T> onEventAction) {
-        ArrayList<Action1> subscriptions=classForSubscriptions.get(clazz.getName());
-        if(subscriptions !=null&&!subscriptions.isEmpty()){
-            subscriptions.remove(subscriptions.size() -1);
-        }
+        final Subscriber liftSubscriber = clazzSubscriber;
+        return Observable.unsafeCreate(new Observable.OnSubscribe<T>() {
+
+            @Override
+            public void call(Subscriber<? super T> subscriber) {
+                subscriber.add(Subscriptions.create(new Action0() {
+                    @Override
+                    public void call() {
+                        final CopyOnWriteArrayList<Subscriber<?>> subscribers = subscribermaps.get(clazz);
+                        subscribers.remove(subscriber);
+                        if(subscribers.isEmpty()){
+                            liftSubscriber.unsubscribe();
+                            typeOfSubscriber.remove(clazz);
+                        }
+                    }
+                }));
+                CopyOnWriteArrayList<Subscriber<?>> subscribers = subscribermaps.get(clazz);
+                if(subscribers ==null){
+                    subscribers = new CopyOnWriteArrayList<Subscriber<?>>();
+                    subscribermaps.put(clazz,subscribers);
+
+                }
+                subscribers.add(subscriber);
+            }
+        });
+
     }
 
 
@@ -98,11 +128,11 @@ public class RxBus {
     }
     public void unregister(@NonNull String tag, @NonNull Subscription subscription) {
         Subject subjects = subjectMapper.get(tag);
-//        if (null != subjects) {
-//            if (!subjects.hasObservers()) {
-//                subjectMapper.remove(tag);
-//            }
-//        }
+        if (null != subjects) {
+            if (!subjects.hasObservers()) {
+                subjectMapper.remove(tag);
+            }
+        }
         if(!subscription.isUnsubscribed()){
             subscription.unsubscribe();
         }

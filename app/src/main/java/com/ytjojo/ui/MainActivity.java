@@ -134,7 +134,6 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onNext(LoginResponse response) {
 
-                RetrofitClient.TOKEN = response.properties.getAccessToken();
 //                RetrofitClient.TOKEN = loginResponse.properties.getAccessToken();
 //                testArray();
 //                testGetDic();

@@ -26,7 +26,7 @@ public interface GitApiInterface {
 
         @Multipart @POST("File/upload")
         Observable<Boolean> uploadImage(
-                @Header(RetrofitClient.TOKEN_HEADER_KEY) String token,
+                @Header("X-Access-Token") String token,
                 @Part("catalog") RequestBody catalog,
                 @Part("doctorId") RequestBody id,
                 @Part("mode") RequestBody mode,

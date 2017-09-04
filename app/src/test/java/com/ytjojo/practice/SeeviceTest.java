@@ -6,11 +6,14 @@ import com.ytjojo.domin.vo.LoginResponse;
 import com.ytjojo.http.GitApiInterface;
 import com.ytjojo.http.coverter.GsonConverterFactory;
 import com.ytjojo.http.interceptor.ReceivedCookiesInterceptor;
-import java.util.ArrayList;
-import okhttp3.OkHttpClient;
-import okhttp3.logging.HttpLoggingInterceptor;
+
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.ArrayList;
+
+import okhttp3.OkHttpClient;
+import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.ProxyHandler;
 import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava.RxJavaCallAdapterFactory;
@@ -25,13 +28,13 @@ public class SeeviceTest {
 
 	@Before
 	public void setUp() throws Exception {
-		HttpLoggingInterceptor i = new HttpLoggingInterceptor(new HttpLoggingInterceptor.Logger() {
+		HttpLoggingInterceptor logger = new HttpLoggingInterceptor(new HttpLoggingInterceptor.Logger() {
 			@Override public void log(String message) {
 				System.out.println(message);
 			}
 		});
-		i.setLevel( HttpLoggingInterceptor.Level.BODY);
-		OkHttpClient o = new OkHttpClient.Builder().addInterceptor(i).addInterceptor(new ReceivedCookiesInterceptor()).build();
+		logger.setLevel( HttpLoggingInterceptor.Level.BODY);
+		OkHttpClient o = new OkHttpClient.Builder().addInterceptor(logger).addInterceptor(new ReceivedCookiesInterceptor()).build();
 
 		retrofit = new Retrofit.Builder()
 				.addCallAdapterFactory(RxJavaCallAdapterFactory.create())

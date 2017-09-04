@@ -1,9 +1,8 @@
 package com.ytjojo.http;
 
-import android.content.Context;
-import android.support.annotation.Nullable;
 import android.support.v4.util.Pair;
 
+import com.orhanobut.logger.Logger;
 import com.ytjojo.http.coverter.GsonConverterFactory;
 import com.ytjojo.http.https.HttpsDelegate;
 import com.ytjojo.http.https.UnSafeHostnameVerifier;
@@ -19,16 +18,16 @@ import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.X509TrustManager;
 
+import okhttp3.CookieJar;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
+import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Converter;
 import retrofit2.ProxyHandler;
 import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava.RxJavaCallAdapterFactory;
 
 public class RetrofitClient {
-    public static volatile  String TOKEN;
-    public static  final String TOKEN_HEADER_KEY = "X-Access-Token";
     public static  final String ContentType_JSON = "application/json";
     public static  final String ContentType_FORM = "application/x-www-form-urlencoded; charset=UTF-8";
     private Retrofit retrofit ;
@@ -64,8 +63,8 @@ public class RetrofitClient {
             e.printStackTrace();
         }
     }
-    public static void init(@Nullable Context c,String baseUrl){
-        mDefaultRetrofitClient = RetrofitClient.newBuilder(c).unsafeSSLSocketFactory().baseUrl(baseUrl).build();
+    public static void init(String baseUrl){
+        mDefaultRetrofitClient = RetrofitClient.newBuilder().unsafeSSLSocketFactory().baseUrl(baseUrl).build();
     }
     public static void init(Builder builder){
         mDefaultRetrofitClient = builder.unsafeSSLSocketFactory().build();
@@ -79,11 +78,11 @@ public class RetrofitClient {
     public void removeInterceptor(Interceptor interceptor){
         mOkHttpClient.interceptors().remove(interceptor);
     }
-    public static Builder newBuilder(@Nullable  Context context){
-        return new Builder(context);
+    public static Builder newBuilder(){
+        return new Builder();
     }
     public static class Builder{
-        Context context;
+        CookieJar cookieJar;
         String baseUrl;
         HashMap<String,String> headers;
         int writeTimeout;
@@ -94,9 +93,9 @@ public class RetrofitClient {
         File cache;
         Converter.Factory factory;
         OkHttpClient okHttpClient;
+        HttpLoggingInterceptor logging;
+        public Builder(){
 
-        public Builder(Context context){
-           this.context =  context.getApplicationContext();
         }
         public Builder baseUrl(String baseUrl){
             this.baseUrl = baseUrl;
@@ -108,6 +107,10 @@ public class RetrofitClient {
         }
         public Builder cache(File cache){
             this.cache = cache;
+            return this;
+        }
+        public Builder cookie(CookieJar cookieJar){
+            this.cookieJar =  cookieJar;
             return this;
         }
         public Builder writeTimeout(int writeTimeout){
@@ -124,6 +127,25 @@ public class RetrofitClient {
         }
         public Builder headerCallable(HeaderCallable headerCallable){
             this.headerCallable = headerCallable;
+            return this;
+        }
+
+        public Builder showLog(boolean showLog){
+            if(!showLog){
+                return this;
+            }
+            this.logging = new HttpLoggingInterceptor(new HttpLoggingInterceptor.Logger() {
+                @Override
+                public void log(String message) {
+                    if (Platform.get() == Platform.Android) {
+                        Logger.e("http",message);
+                    } else {
+                        System.out.println("http =====  :  " + message);
+                    }
+                }
+            });
+            // set your desired log level
+            logging.setLevel(HttpLoggingInterceptor.Level.BODY);
             return this;
         }
 
@@ -168,7 +190,11 @@ public class RetrofitClient {
         public RetrofitClient build(){
             HeaderInterceptor headerInterceptor = null;
             if(okHttpClient == null){
-                OkHttpClient.Builder builder = OkHttpClientBuilder.builder(context,cache);
+
+                OkHttpClient.Builder builder = OkHttpClientBuilder.builder(cookieJar,cache);
+                if(logging !=null){
+                    builder.addInterceptor(logging);
+                }
                 if(baseUrl ==null){
                     throw new IllegalArgumentException("baseUrl can't be null");
                 }
@@ -193,8 +219,9 @@ public class RetrofitClient {
                 builder.addInterceptor(headerInterceptor);
                 this.okHttpClient = builder.build();
             }
-
+            
             this.factory = factory ==null?GsonConverterFactory.create():factory;
+    
             Retrofit  retrofit = new Retrofit.Builder()
             .baseUrl(baseUrl)
             .client(okHttpClient)
@@ -209,9 +236,6 @@ public class RetrofitClient {
     }
 
     public static RetrofitClient getDefault(){
-        if(mDefaultRetrofitClient==null){
-            mDefaultRetrofitClient = RetrofitClient.newBuilder(null).build();
-        }
         return mDefaultRetrofitClient;
     }
 

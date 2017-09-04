@@ -1,6 +1,7 @@
 package com.ytjojo.practice;
 
 import com.ytjojo.http.exception.AuthException;
+import com.ytjojo.rx.RxBus;
 
 import org.junit.Test;
 
@@ -8,6 +9,8 @@ import java.util.concurrent.TimeUnit;
 
 import rx.Observable;
 import rx.Subscriber;
+import rx.Subscription;
+import rx.functions.Action1;
 import rx.functions.Func1;
 import rx.schedulers.Schedulers;
 
@@ -118,5 +121,42 @@ public class Rxtest {
                 }
             }
         };
+    }
+
+    @Test
+    public void Rxbustext(){
+        Subscription s1 = RxBus.getDefault().registerObservable(Integer.class).subscribe(new Action1<Integer>() {
+            @Override
+            public void call(Integer integer) {
+                System.out.println(integer+" s 1");
+            }
+        });
+        Subscription s2 =RxBus.getDefault().registerObservable(Integer.class).subscribe(new Action1<Integer>() {
+            @Override
+            public void call(Integer integer) {
+                System.out.println(integer+" s 2");
+            }
+        });
+       Subscription s3 = RxBus.getDefault().registerObservable(Integer.class).subscribe(new Action1<Integer>() {
+            @Override
+            public void call(Integer integer) {
+                System.out.println(integer+" s 3");
+            }
+        });
+        RxBus.getDefault().registerObservable(Integer.class).subscribe( new Action1<Integer>() {
+            @Override
+            public void call(Integer integer) {
+                System.out.println(integer+" s 4");
+            }
+        });
+
+        RxBus.getDefault().registerObservable(Integer.class).subscribe( new Action1<Integer>() {
+            @Override
+            public void call(Integer integer) {
+                System.out.println(integer+" s 5");
+            }
+        });
+
+        RxBus.getDefault().post(100);
     }
 }

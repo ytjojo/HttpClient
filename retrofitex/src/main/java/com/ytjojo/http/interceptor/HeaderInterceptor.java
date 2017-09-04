@@ -1,8 +1,7 @@
 package com.ytjojo.http.interceptor;
 
 import com.ytjojo.http.exception.AuthException;
-
-import org.json.JSONException;
+import com.ytjojo.http.exception.TokenInvalidException;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -19,48 +18,54 @@ import okhttp3.Response;
 //https://github.com/alighters/AndroidDemos/blob/master/app/src/main/java/com/lighters/demos/token/http/api/ErrorCode.java
 public class HeaderInterceptor implements Interceptor {
     private static final Charset UTF8 = Charset.forName("UTF-8");
-    private final Map<String,String> mHeaders =new ConcurrentHashMap<>();
+    private final Map<String, String> mHeaders = new ConcurrentHashMap<>();
     private final HeaderCallable mTokenCallable;
     private final CountDownLatch mCountDownLatch = new CountDownLatch(1);
     private final String baseUrl;
-    AtomicInteger mRefreshTokenFlag =new AtomicInteger(0);
-    volatile boolean restoreCachedValue ;
-    public void putHeader(String key,String value){
-        if(key !=null && value !=null)
-        mHeaders.put(key,value);
+    AtomicInteger mRefreshTokenFlag = new AtomicInteger(0);
+    volatile boolean restoreCachedValue;
+
+    public void putHeader(String key, String value) {
+        if (key != null && value != null)
+            mHeaders.put(key, value);
     }
-    public void putHeaders(HashMap<String,String> headers){
-        if(headers!=null){
+
+    public void putHeaders(HashMap<String, String> headers) {
+        if (headers != null) {
             mHeaders.putAll(headers);
         }
 
     }
-    public void onUserLoginGetToken(String key,String token){
+
+    public void onUserLoginGetToken(String key, String token) {
         mRefreshTokenFlag.set(0);
-        if(key !=null && token !=null){
-            mHeaders.put(key,token);
+        if (key != null && token != null) {
+            mHeaders.put(key, token);
         }
     }
-    public HeaderInterceptor(HeaderCallable tokenCallable,String baseUrl){
+
+    public HeaderInterceptor(HeaderCallable tokenCallable, String baseUrl) {
         this.mTokenCallable = tokenCallable;
         this.baseUrl = baseUrl;
     }
+
     void clearAuth() {
-       mHeaders.clear();
+        mHeaders.clear();
     }
-    void processAuth() throws AuthException{
-        try{
+
+    void processAuth() throws AuthException {
+        try {
             String value = mTokenCallable.call();
-            if(value !=null){
-                mHeaders.put(mTokenCallable.key(),value);
-                HashMap<String,String> extraHeaders= mTokenCallable.extraHeaders();
-                if(extraHeaders !=null && !extraHeaders.isEmpty()){
+            if (value != null) {
+                mHeaders.put(mTokenCallable.key(), value);
+                HashMap<String, String> extraHeaders = mTokenCallable.extraHeaders();
+                if (extraHeaders != null && !extraHeaders.isEmpty()) {
                     mHeaders.putAll(extraHeaders);
                 }
-            }else{
+            } else {
                 throw new AuthException("HeaderCallable.call()获得的headervalue为null");
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             throw new AuthException(e);
         }
 
@@ -71,66 +76,64 @@ public class HeaderInterceptor implements Interceptor {
         final Request request = chain.request();
 
         if (request.url().toString().startsWith(baseUrl)) {
-            final Response response = chain.proceed(updateHeadaerIfNeeded(chain));
-            try {
-                if(isTokenExpired(response)){
-                    //token 已经失效了
-
-                    if(mTokenCallable!=null){
-                        //判断是否已经刷新了header
-                        String oldTokenValue = request.header(mTokenCallable.key());
-                        if(mRefreshTokenFlag.compareAndSet(2,0)){
-                          if(oldTokenValue != null && oldTokenValue.equals(mHeaders.get(mTokenCallable.key()))){
-                              //已经更新了header,但是服务器仍然验证失败
-                              return response;
-                          }
-                        }
-                        requestTokenAync();
-                    }
-
-                    final Request.Builder requestBuilder = request.newBuilder();
-                    for(HashMap.Entry<String,String> entry:mHeaders.entrySet()){
-                        String key = entry.getKey();
-                        String value = entry.getValue();
-                        if(value !=null && key!=null ){
-                            requestBuilder.header(key,value);
+            Response response = chain.proceed(updateHeadaerIfNeeded(chain));
+            if (isTokenExpired(response)) {
+                //token 已经失效了
+                if (mTokenCallable != null) {
+                    //判断是否已经刷新了header
+                    String oldTokenValue = request.header(mTokenCallable.key());
+                    if (mRefreshTokenFlag.compareAndSet(2, 0)) {
+                        if (oldTokenValue != null && oldTokenValue.equals(mHeaders.get(mTokenCallable.key()))) {
+                            //已经更新了header,但是服务器仍然验证失败
+                            throw new TokenInvalidException(response.code(),response.message());
                         }
                     }
-                    Request newSigned = requestBuilder.build();
-                    return chain.proceed(newSigned);
+                    requestTokenAync();
                 }
-            } catch (JSONException e) {
-                e.printStackTrace();
+
+                final Request.Builder requestBuilder = request.newBuilder();
+                for (HashMap.Entry<String, String> entry : mHeaders.entrySet()) {
+                    String key = entry.getKey();
+                    String value = entry.getValue();
+                    if (value != null && key != null) {
+                        requestBuilder.header(key, value);
+                    }
+                }
+                Request newSigned = requestBuilder.build();
+                response =  chain.proceed(newSigned);
+                if(isTokenExpired(response)){
+                    throw new TokenInvalidException(response.code(),response.message());
+                }
+            } else {
+                return chain.proceed(request);
             }
-            return response;
-        } else {
-            return chain.proceed(request);
         }
+        return chain.proceed(request);
     }
-    public static boolean equals(Object o1,Object o2){
-        if(o1 == null ||o2 == null){
+
+    public static boolean equals(Object o1, Object o2) {
+        if (o1 == null || o2 == null) {
             return false;
         }
         return o1.equals(o2);
     }
-    private void requestTokenAync()throws IOException{
-        if(mRefreshTokenFlag.compareAndSet(0,1)){
+
+    private void requestTokenAync() throws IOException {
+        if (mRefreshTokenFlag.compareAndSet(0, 1)) {
             clearAuth();
             try {
                 processAuth();
                 mRefreshTokenFlag.set(2);
-            }
-            catch (AuthException e){
+            } catch (AuthException e) {
                 mRefreshTokenFlag.set(3);
                 throw e;
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 mRefreshTokenFlag.set(3);
                 throw new AuthException(e);
-            }finally {
+            } finally {
                 mCountDownLatch.countDown();
             }
-        }else if(mRefreshTokenFlag.compareAndSet(1,1)) {
+        } else if (mRefreshTokenFlag.compareAndSet(1, 1)) {
             try {
                 mCountDownLatch.await();
             } catch (InterruptedException e) {
@@ -139,19 +142,20 @@ public class HeaderInterceptor implements Interceptor {
         }
 
     }
+
     public Request updateHeadaerIfNeeded(Chain chain) throws IOException {
         Request request = chain.request();
-        if(mHeaders.isEmpty()){
+        if (mHeaders.isEmpty()) {
             return request;
         }
         final Request.Builder requestBuilder = request.newBuilder();
-        if(mTokenCallable !=null&&!restoreCachedValue){
-            synchronized (HeaderInterceptor.class){
-                if(!restoreCachedValue){
-                    if(mHeaders.get(mTokenCallable.key())==null){
+        if (mTokenCallable != null && !restoreCachedValue) {
+            synchronized (HeaderInterceptor.class) {
+                if (!restoreCachedValue) {
+                    if (mHeaders.get(mTokenCallable.key()) == null) {
                         String cachedValue = mTokenCallable.getCachedValue();
-                        if(cachedValue!=null){
-                            mHeaders.put(mTokenCallable.key(),cachedValue);
+                        if (cachedValue != null) {
+                            mHeaders.put(mTokenCallable.key(), cachedValue);
                         }
                     }
                     restoreCachedValue = true;
@@ -160,21 +164,22 @@ public class HeaderInterceptor implements Interceptor {
 
 
         }
-        for(HashMap.Entry<String,String> entry:mHeaders.entrySet()){
+        for (HashMap.Entry<String, String> entry : mHeaders.entrySet()) {
             String key = entry.getKey();
             String value = entry.getValue();
-            if(value !=null && key!=null ){
-                requestBuilder.header(key,value);
+            if (value != null && key != null) {
+                requestBuilder.header(key, value);
             }
         }
         return requestBuilder.build();
     }
-    private boolean isTokenExpired(Response originalResponse) throws IOException, JSONException {
-        if(originalResponse.code() == 401){
+
+    private boolean isTokenExpired(Response originalResponse) {
+        if (originalResponse.code() == 401) {
             return true;
         }
-        if(mTokenCallable !=null ){
-            return mTokenCallable.isExpired(originalResponse.code(),originalResponse);
+        if (mTokenCallable != null) {
+            return mTokenCallable.isExpired(originalResponse.code(), originalResponse);
         }
 //        ResponseBody responseBody = originalResponse.body();
 //        BufferedSource source = responseBody.source();

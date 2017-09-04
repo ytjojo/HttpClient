@@ -7,6 +7,7 @@ import android.hardware.SensorManager;
 import android.support.v4.util.Pair;
 
 import com.orhanobut.logger.Logger;
+import com.ytjojo.http.exception.APIException;
 import com.ytjojo.http.exception.AuthException;
 
 import java.net.ConnectException;
@@ -86,16 +87,22 @@ public class RxCreator {
                 }else if(throwable instanceof HttpException){
                     HttpException he = (HttpException) throwable;
                     if(he.code()==401||he.code() ==403||he.code() == 409){
-                        if(retryCount>maxRetryCount){
+                        if(retryCount <maxRetryCount){
                             login();
-                            return Observable.error(new AuthException(throwable));
+                            return  retry(throwable);
                         }else{
-                            return retry(throwable);
+                            return Observable.error(new AuthException(throwable));
                         }
 
                     }
                 }else if(throwable instanceof AuthException){
                     login();
+                    if (retryCount < maxRetryCount) {
+                        retryCount = maxRetryCount;
+                        return retry(throwable);
+                    }
+                }else if(throwable instanceof APIException){
+                    return Observable.error(throwable);
                 }
                 return Observable.error(throwable);
             }
@@ -227,14 +234,6 @@ public class RxCreator {
         return Observable.defer(func0);
     }
 
-    public <T1, T2> void testFlatMap(Observable<T1> o1, final Observable<T2> o2) {
-        o1.flatMap(new Func1<T1, Observable<T2>>() {
-            @Override
-            public Observable<T2> call(T1 t) {
-                return o2;
-            }
-        });
-    }
 
     public <T> Observable<T> create(final Callable<String> callable) {
         Observable.fromCallable(new Callable<String>() {

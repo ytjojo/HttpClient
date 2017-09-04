@@ -69,7 +69,6 @@ public abstract class TokenRefreshHandler {
                             getTokenObsevable().subscribe(new Action1<String>() {
                                 @Override
                                 public void call(String s) {
-                                    RetrofitClient.TOKEN = s;
 
                                 }
                             }, new Action1<Throwable>() {
