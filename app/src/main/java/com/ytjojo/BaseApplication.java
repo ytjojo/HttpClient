@@ -3,15 +3,15 @@ package com.ytjojo;
 import android.app.Application;
 import android.content.Context;
 import android.support.multidex.MultiDex;
-import android.util.Log;
 import android.widget.TextView;
 
 import com.github.promeg.xlog_android.lib.XLogConfig;
+import com.orhanobut.logger.AndroidLogAdapter;
+import com.orhanobut.logger.FormatStrategy;
 import com.orhanobut.logger.Logger;
-import com.orhanobut.logger.Settings;
+import com.orhanobut.logger.PrettyFormatStrategy;
 import com.promegu.xlog.base.XLogMethod;
 import com.ytjojo.http.RetrofitClient;
-import com.ytjojo.practice.BuildConfig;
 import com.ytjojo.practice.R;
 
 import java.util.ArrayList;
@@ -23,7 +23,8 @@ public class BaseApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        RetrofitClient.init("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/");
+        RetrofitClient.init(RetrofitClient.newBuilder().baseUrl("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/")
+                .showLog(true));
         sInstance = this;
         List<XLogMethod> xLogMethods = new ArrayList<>();
         xLogMethods.add(new XLogMethod(TextView.class, "setText"));
@@ -32,13 +33,14 @@ public class BaseApplication extends Application {
 //                .timeThreshold(10) // optional
                 .build());
 
-        Logger.initialize(
-                Settings.getInstance()
-                        .isShowMethodLink(true)
-                        .isShowThreadInfo(false)
-                        .setMethodOffset(0)
-                        .setLogPriority(BuildConfig.DEBUG ? Log.VERBOSE : Log.ASSERT)
-        );
+        FormatStrategy formatStrategy = PrettyFormatStrategy.newBuilder()
+                .showThreadInfo(false)  // (Optional) Whether to show thread info or not. Default true
+                .methodCount(0)         // (Optional) How many method line to show. Default 2
+                .methodOffset(5)        // (Optional) Hides internal method calls up to offset. Default 5
+                .tag("ngr")   // (Optional) Global tag for every log. Default PRETTY_LOGGER
+                .build();
+
+        Logger.addLogAdapter(new AndroidLogAdapter(formatStrategy));
     }
     public static BaseApplication getInstance(){
         return sInstance;

@@ -210,7 +210,7 @@ public class FragmentStack {
 
     public void onRestoreInstanceState(Bundle savedInstanceState) {
         mFragmentTags = savedInstanceState.getStringArrayList(BUNDLE_FRAGMENT_TAGS);
-        Logger.object(mFragmentTags);
+        Logger.e(mFragmentTags.toString());
     }
 
     public boolean onBackPressed() {

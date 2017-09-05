@@ -105,7 +105,7 @@ public class HeaderInterceptor implements Interceptor {
                     throw new TokenInvalidException(response.code(),response.message());
                 }
             } else {
-                return chain.proceed(request);
+                return response;
             }
         }
         return chain.proceed(request);

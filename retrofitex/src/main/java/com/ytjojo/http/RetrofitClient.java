@@ -2,12 +2,13 @@ package com.ytjojo.http;
 
 import android.support.v4.util.Pair;
 
-import com.orhanobut.logger.Logger;
+import com.orhanobut.logger.PrettyFormatStrategy;
 import com.ytjojo.http.coverter.GsonConverterFactory;
 import com.ytjojo.http.https.HttpsDelegate;
 import com.ytjojo.http.https.UnSafeHostnameVerifier;
 import com.ytjojo.http.interceptor.HeaderCallable;
 import com.ytjojo.http.interceptor.HeaderInterceptor;
+import com.ytjojo.http.interceptor.HttpLoggingInterceptor;
 
 import java.io.File;
 import java.io.IOException;
@@ -21,7 +22,6 @@ import javax.net.ssl.X509TrustManager;
 import okhttp3.CookieJar;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
-import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Converter;
 import retrofit2.ProxyHandler;
 import retrofit2.Retrofit;
@@ -135,10 +135,14 @@ public class RetrofitClient {
                 return this;
             }
             this.logging = new HttpLoggingInterceptor(new HttpLoggingInterceptor.Logger() {
+
+                PrettyFormatStrategy  pfs = PrettyFormatStrategy.newBuilder().methodCount(0).methodOffset(5).showThreadInfo(false).build();
                 @Override
                 public void log(String message) {
                     if (Platform.get() == Platform.Android) {
-                        Logger.e("http",message);
+
+                        pfs.log(4,"http",message);
+
                     } else {
                         System.out.println("http =====  :  " + message);
                     }
@@ -148,6 +152,7 @@ public class RetrofitClient {
             logging.setLevel(HttpLoggingInterceptor.Level.BODY);
             return this;
         }
+
 
         /**
          * 信任所有证书,不安全有风险
@@ -189,15 +194,13 @@ public class RetrofitClient {
         }
         public RetrofitClient build(){
             HeaderInterceptor headerInterceptor = null;
+            if(baseUrl ==null){
+                throw new IllegalArgumentException("baseUrl can't be null");
+            }
             if(okHttpClient == null){
 
                 OkHttpClient.Builder builder = OkHttpClientBuilder.builder(cookieJar,cache);
-                if(logging !=null){
-                    builder.addInterceptor(logging);
-                }
-                if(baseUrl ==null){
-                    throw new IllegalArgumentException("baseUrl can't be null");
-                }
+
                 if(connectTimeout>0){
                     builder.connectTimeout(connectTimeout, TimeUnit.SECONDS);
                 }
@@ -217,6 +220,9 @@ public class RetrofitClient {
                     headerInterceptor.putHeaders(headers);
                 }
                 builder.addInterceptor(headerInterceptor);
+                if(logging !=null){
+                    builder.addInterceptor(logging);
+                }
                 this.okHttpClient = builder.build();
             }
             
