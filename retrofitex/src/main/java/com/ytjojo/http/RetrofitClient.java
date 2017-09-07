@@ -52,7 +52,7 @@ public class RetrofitClient {
      * @param key
      * @param token
      */
-    public void onUserLoginGetToke(String key,String token){
+    public void onUserLoginGetToken(String key,String token){
         mHeaderInterceptor.onUserLoginGetToken(key,token);
     }
 
