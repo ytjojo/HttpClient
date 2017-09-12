@@ -73,6 +73,8 @@ public interface GitApiInterface {
         Observable<JsonObject> getAddrArea(@ArrayItem String arg,@ArrayItem int areaCode );
         @GET("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/eh.mpi.dictionary.PatientType.dic?limit=0")
         Observable<JsonObject> getHealthCardTypeDict();
+        @GET("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/eh.mpi.dictionary.PatientType.dic?limit=0")
+        Observable<Void> getHealthCardTypeDict1();
 
 
     }

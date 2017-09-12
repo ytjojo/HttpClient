@@ -7,6 +7,7 @@ import android.hardware.SensorManager;
 import android.support.v4.util.Pair;
 
 import com.orhanobut.logger.Logger;
+import com.trello.rxlifecycle.LifecycleTransformer;
 import com.ytjojo.http.exception.APIException;
 import com.ytjojo.http.exception.AuthException;
 
@@ -154,6 +155,16 @@ public class RxCreator {
             }
         };
     }
+    public static <T> Observable.Transformer<T, T> applySchedulers(final LifecycleTransformer transformer) {
+        return new Observable.Transformer<T, T>() {
+            @Override
+            public Observable<T> call(Observable<T> observable) {
+                return observable.subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread()).retryWhen(getRetryFunc1()).compose(transformer);
+            }
+        };
+    }
+
 
     public static <T> void applySchedulers(Observable<T> observable) {
         observable.compose(applySchedulers());

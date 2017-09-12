@@ -5,6 +5,7 @@ import com.ytjojo.domin.request.LoginRequest;
 import com.ytjojo.domin.vo.LoginResponse;
 import com.ytjojo.http.GitApiInterface;
 import com.ytjojo.http.coverter.GsonConverterFactory;
+import com.ytjojo.http.interceptor.HttpLoggingInterceptor;
 import com.ytjojo.http.interceptor.ReceivedCookiesInterceptor;
 
 import org.junit.Before;
@@ -13,7 +14,6 @@ import org.junit.Test;
 import java.util.ArrayList;
 
 import okhttp3.OkHttpClient;
-import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.ProxyHandler;
 import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava.RxJavaCallAdapterFactory;

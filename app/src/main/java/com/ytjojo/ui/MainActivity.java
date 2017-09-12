@@ -22,6 +22,8 @@ import android.view.Window;
 import android.view.WindowManager;
 import com.google.gson.JsonObject;
 import com.orhanobut.logger.Logger;
+import com.trello.rxlifecycle.android.ActivityEvent;
+import com.trello.rxlifecycle.components.support.RxAppCompatActivity;
 import com.ytjojo.domin.request.LoginRequest;
 import com.ytjojo.domin.response.OrganAddrArea;
 import com.ytjojo.domin.vo.LoginResponse;
@@ -32,7 +34,7 @@ import com.ytjojo.rx.RxCreator;
 import com.ytjojo.utils.DensityUtil;
 import rx.Subscriber;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends RxAppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,9 +88,8 @@ public class MainActivity extends AppCompatActivity {
         toolbar.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                //testGetDic();
+                testGetDic();
                 //testArray();
-                getAddrArea();
                 if ((mDecorView.getSystemUiVisibility() & View.SYSTEM_UI_FLAG_HIDE_NAVIGATION) == 0){
                     hideSystemUI();
 
@@ -136,14 +137,17 @@ public class MainActivity extends AppCompatActivity {
 
 //                RetrofitClient.TOKEN = loginResponse.properties.getAccessToken();
 //                testArray();
-//                testGetDic();
+                testGetDic();
             }
         });
     }
     private void getAddrArea() {
         GitApiInterface gitApiInterface = RetrofitClient.getDefault().create(GitApiInterface.class);
         LoginRequest request = new LoginRequest();
-        gitApiInterface.getAddrArea(null,0).compose(RxCreator.applySchedulersIO()).subscribe(new Subscriber<JsonObject>() {
+        gitApiInterface.getAddrArea(null,0)
+                .compose(RxCreator.applySchedulers(bindUntilEvent(ActivityEvent.DESTROY)))
+                .compose(bindUntilEvent(ActivityEvent.DESTROY))
+                .subscribe(new Subscriber<JsonObject>() {
             @Override
             public void onCompleted() {
 
@@ -165,17 +169,18 @@ public class MainActivity extends AppCompatActivity {
     }
     private void testGetDic(){
         GitApiInterface gitApiInterface = RetrofitClient.getDefault().create(GitApiInterface.class);
-        gitApiInterface.getHealthCardTypeDict().compose(RxCreator.applySchedulersIO()).subscribe(new Subscriber<JsonObject>() {
+        gitApiInterface.getHealthCardTypeDict1().compose(RxCreator.applySchedulers(bindUntilEvent(ActivityEvent.DESTROY)))
+                .subscribe(new Subscriber<Void>() {
             @Override public void onCompleted() {
 
             }
 
             @Override public void onError(Throwable e) {
-
+                Logger.e("----------------getHealthCardTypeDict1" + e.getMessage());
             }
 
-            @Override public void onNext(JsonObject jsonObject) {
-               Log.e("get", jsonObject.toString());
+            @Override public void onNext(Void  ss) {
+                Logger.e("----------------getHealthCardTypeDict1");
             }
         });
     }
