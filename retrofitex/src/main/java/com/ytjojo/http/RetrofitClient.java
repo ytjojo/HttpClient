@@ -13,6 +13,7 @@ import com.ytjojo.http.interceptor.HttpLoggingInterceptor;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -31,13 +32,16 @@ public class RetrofitClient {
     public static  final String ContentType_JSON = "application/json";
     public static  final String ContentType_FORM = "application/x-www-form-urlencoded; charset=UTF-8";
     private Retrofit retrofit ;
-    static OkHttpClient mOkHttpClient;
+    OkHttpClient mOkHttpClient;
     public RetrofitClient(Retrofit retrofit){
         this.retrofit = retrofit;
     }
     public RetrofitClient(Retrofit retrofit,HeaderInterceptor headerInterceptor){
         this.mHeaderInterceptor = headerInterceptor;
         this.retrofit = retrofit;
+    }
+    private void setOkHttpClient(OkHttpClient okHttpClient){
+        this.mOkHttpClient = okHttpClient;
     }
     public static RetrofitClient mDefaultRetrofitClient;
     private HeaderInterceptor mHeaderInterceptor;
@@ -72,12 +76,7 @@ public class RetrofitClient {
     public static void setDefault(RetrofitClient client){
         mDefaultRetrofitClient = client;
     }
-    public void addInterceptor(Interceptor interceptor){
-        mOkHttpClient.interceptors().add(interceptor);
-    }
-    public void removeInterceptor(Interceptor interceptor){
-        mOkHttpClient.interceptors().remove(interceptor);
-    }
+
     public static Builder newBuilder(){
         return new Builder();
     }
@@ -94,6 +93,7 @@ public class RetrofitClient {
         Converter.Factory factory;
         OkHttpClient okHttpClient;
         HttpLoggingInterceptor logging;
+        ArrayList<Interceptor> interceptors = new ArrayList<>();
         public Builder(){
 
         }
@@ -127,6 +127,10 @@ public class RetrofitClient {
         }
         public Builder headerCallable(HeaderCallable headerCallable){
             this.headerCallable = headerCallable;
+            return this;
+        }
+        public Builder addInterceptor(Interceptor interceptor){
+            interceptors.add(interceptor);
             return this;
         }
 
@@ -223,6 +227,9 @@ public class RetrofitClient {
                 if(logging !=null){
                     builder.addInterceptor(logging);
                 }
+                for(Interceptor i:interceptors){
+                    builder.addInterceptor(i);
+                }
                 this.okHttpClient = builder.build();
             }
             
@@ -234,7 +241,9 @@ public class RetrofitClient {
             .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
             .addConverterFactory(factory)
             .build();
-            return new RetrofitClient(retrofit,headerInterceptor);
+            RetrofitClient retrofitClient = new RetrofitClient(retrofit,headerInterceptor);
+            retrofitClient.setOkHttpClient(okHttpClient);
+            return retrofitClient;
         }
     }
     public  <T> T create(Class<T> service){

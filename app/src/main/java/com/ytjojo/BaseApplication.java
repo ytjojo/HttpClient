@@ -27,8 +27,8 @@ public class BaseApplication extends Application {
     public void onCreate() {
         super.onCreate();
         RetrofitClient.init(RetrofitClient.newBuilder().baseUrl("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/")
-                .showLog(true).cookie(new CookiesManager(this)));
-        RetrofitClient.getDefault().addInterceptor(new ReceivedCookiesInterceptor());
+                .showLog(true).cookie(new CookiesManager(this))
+                .addInterceptor(new ReceivedCookiesInterceptor()));
         sInstance = this;
         List<XLogMethod> xLogMethods = new ArrayList<>();
         xLogMethods.add(new XLogMethod(TextView.class, "setText"));
