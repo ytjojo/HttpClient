@@ -96,10 +96,11 @@ public final class CacheInterceptor implements Interceptor {
     Response networkResponse = null;
     try {
       networkResponse = chain.proceed(networkRequest);
-      String cacheControlValue= cachetTime==null? String.format("max-age=%s", cachetTime):"public, only-if-cached, max-stale= 2147483647";
-      networkResponse = networkResponse.newBuilder()
-          .header("Cache-Control", cacheControlValue)
-          .removeHeader("Pragma")
+      Response.Builder builder  = networkResponse.newBuilder();
+      if(cachetTime !=null){
+        builder.header("Cache-Control",  String.format("max-age=%s", cachetTime));
+      }
+      networkResponse = builder.removeHeader("Pragma")
           .networkResponse(null)
           .build();
     } finally {

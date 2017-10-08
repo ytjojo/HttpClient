@@ -10,9 +10,12 @@ import com.ytjojo.http.interceptor.ReceivedCookiesInterceptor;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.Request;
 
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 
+import okhttp3.CacheControl;
 import okhttp3.OkHttpClient;
 import retrofit2.ProxyHandler;
 import retrofit2.Retrofit;
@@ -105,5 +108,19 @@ public class SeeviceTest {
 				System.out.println("onNext");
 			}
 		});
+	}
+	@Test
+	public void headerTest(){
+		final CacheControl.Builder builder = new CacheControl.Builder();
+		String ss ;
+//		String ss =builder.noCache().build().toString();
+		ss = CacheControl.FORCE_CACHE.toString();
+//		CacheControl cc = builder.maxAge(30, TimeUnit.SECONDS).build();
+//	    ss=	cc.toString();
+//
+//		okhttp3.Request.Builder builder1 = new okhttp3.Request.Builder().cacheControl(cc);
+//		builder1.url("http://www.baidu.com");
+//		 okhttp3.Request request =builder1.build();
+		System.out.println(ss);
 	}
 }

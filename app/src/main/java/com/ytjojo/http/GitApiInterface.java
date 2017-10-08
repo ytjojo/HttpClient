@@ -4,6 +4,8 @@ import com.google.gson.JsonObject;
 import com.ytjojo.domin.request.LoginRequest;
 import com.ytjojo.domin.response.OrganAddrArea;
 import com.ytjojo.domin.vo.LoginResponse;
+import com.ytjojo.http.okhttpBuilder.CacheHeaderTime;
+
 import java.util.ArrayList;
 import java.util.Map;
 import okhttp3.MultipartBody;
@@ -46,7 +48,7 @@ public interface GitApiInterface {
         @Headers({
             "CHACHE_DYNAMIC_KEY:11",
             "CHACHE_DYNAMIC_KEY_GROUP:sdw",
-            "CACHEINTERCEPTOR_CACHE_TIME:36000"
+            "CACHEINTERCEPTOR_CACHE_TIME:36000",
         })
         @NgariJsonPost(method = "getOgranAddrArea",serviceId = "eh.organ")
         Observable<OrganAddrArea> loginWithArray(@Url String url, @ArrayItem int id );
