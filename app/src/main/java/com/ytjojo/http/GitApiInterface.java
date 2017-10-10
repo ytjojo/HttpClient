@@ -8,6 +8,7 @@ import com.ytjojo.http.okhttpBuilder.CacheHeaderTime;
 
 import java.util.ArrayList;
 import java.util.Map;
+
 import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
 import retrofit2.http.ArrayItem;
@@ -76,6 +77,10 @@ public interface GitApiInterface {
         @GET("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/eh.mpi.dictionary.PatientType.dic?limit=0")
         Observable<JsonObject> getHealthCardTypeDict();
         @GET("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/eh.mpi.dictionary.PatientType.dic?limit=0")
+        @Headers({
+                CacheHeaderTime.CACHE_3_MIN,
+                "Cache-Control: public, max-age=180"
+        })
         Observable<Void> getHealthCardTypeDict1();
 
 

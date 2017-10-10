@@ -1,6 +1,7 @@
 package com.ytjojo.http.cache;
 
 import java.io.IOException;
+
 import okhttp3.CacheControl;
 import okhttp3.Headers;
 import okhttp3.Interceptor;
@@ -98,7 +99,11 @@ public final class CacheInterceptor implements Interceptor {
       networkResponse = chain.proceed(networkRequest);
       Response.Builder builder  = networkResponse.newBuilder();
       if(cachetTime !=null){
-        builder.header("Cache-Control",  String.format("max-age=%s", cachetTime));
+        if(com.ytjojo.http.util.TextUtils.isInteger(cachetTime)){
+          builder.header("Cache-Control",  String.format("max-age=%s", cachetTime));
+        }else{
+          builder.header("Cache-Control", cachetTime);
+        }
       }
       networkResponse = builder.removeHeader("Pragma")
           .networkResponse(null)

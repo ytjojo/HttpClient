@@ -1,6 +1,7 @@
 package com.ytjojo.http;
 
 import com.ytjojo.http.cache.CacheInterceptor;
+import com.ytjojo.http.interceptor.CacheControInterceptor;
 
 import java.io.File;
 import java.util.concurrent.TimeUnit;
@@ -36,6 +37,7 @@ public class OkHttpClientBuilder {
             Cache cache = new Cache(getCache, maxCacheSize);
             builder.cache(cache);
             builder.addInterceptor(new CacheInterceptor(new com.ytjojo.http.cache.Cache(postCache, 20 * 1024 * 1024)));
+            builder.addInterceptor(new CacheControInterceptor());
         }
         return builder;
 

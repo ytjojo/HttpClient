@@ -1,11 +1,13 @@
 package com.ytjojo.http.interceptor;
 
 import android.util.Log;
+
 import java.io.IOException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
+
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -40,10 +42,10 @@ public class ReceivedCookiesInterceptor implements Interceptor {
             }
         }
         //获取服务器相应时间--用于计算倒计时的时间差
-        if (!originalResponse.header("Date").isEmpty()){
-            long date = dateToStamp(originalResponse.header("Date"));
-        }
-
+//        String dateValue = originalResponse.header("Date");
+//        if (!TextUtils.isEmpty(dateValue)){
+//            long date = dateToStamp(originalResponse.header("Date"));
+//        }
         return originalResponse;
     }
 
@@ -51,6 +53,8 @@ public class ReceivedCookiesInterceptor implements Interceptor {
    * 将时间转换为时间戳
    */
     public static long dateToStamp(String s) throws android.net.ParseException {
+//        TimeZone.setDefault(TimeZone.getTimeZone("GMT"));
+//        Date date = new Date();
         Date date = new Date(s); //转换为标准时间对象
         Calendar calendar= getInstance();
         calendar.setTime(date);

@@ -13,7 +13,6 @@ import com.orhanobut.logger.PrettyFormatStrategy;
 import com.promegu.xlog.base.XLogMethod;
 import com.ytjojo.http.CookiesManager;
 import com.ytjojo.http.RetrofitClient;
-import com.ytjojo.http.cookie.PersistentCookieJar;
 import com.ytjojo.http.interceptor.ReceivedCookiesInterceptor;
 import com.ytjojo.practice.R;
 
@@ -28,6 +27,7 @@ public class BaseApplication extends Application {
         super.onCreate();
         RetrofitClient.init(RetrofitClient.newBuilder().baseUrl("http://ngaribata.ngarihealth.com:8480/ehealth-base-devtest/")
                 .showLog(true).cookie(new CookiesManager(this))
+                .cache(getCacheDir())
                 .addInterceptor(new ReceivedCookiesInterceptor()));
         sInstance = this;
         List<XLogMethod> xLogMethods = new ArrayList<>();
