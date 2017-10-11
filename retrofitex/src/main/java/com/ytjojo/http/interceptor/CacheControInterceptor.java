@@ -1,5 +1,6 @@
 package com.ytjojo.http.interceptor;
 
+import com.ytjojo.http.okhttpBuilder.CacheHeaderTime;
 import com.ytjojo.http.util.TextUtils;
 
 import java.io.IOException;
@@ -26,8 +27,18 @@ public class CacheControInterceptor implements Interceptor {
             return chain.proceed(request);
         }
         String cachetTime = request.header(HEADER_CACHE_TIME);
+        CacheControl reqeuestCacheControl = request.cacheControl();
+        if(cachetTime==null){
+            return chain.proceed(request);
+        }
+        if(CacheHeaderTime.FORCE_CACHE.equals(cachetTime)){
+            reqeuestCacheControl= CacheControl.FORCE_CACHE;
+        }else if(CacheHeaderTime.NO_CACHE.equals(cachetTime)){
+            reqeuestCacheControl= CacheControl.FORCE_NETWORK;
+        }
         request = request.newBuilder()
                 .removeHeader(HEADER_CACHE_TIME)
+                .cacheControl(reqeuestCacheControl)
                 .build();
         Response originalResponse;
         try{
@@ -50,6 +61,7 @@ public class CacheControInterceptor implements Interceptor {
                 //.header("Cache-Control",  String.format("max-age=%d", cacheTime))
                 .header("Cache-Control", cacheControl)
                 .removeHeader("Pragma")
+                .removeHeader("Expires")
                 .build();
     }
 

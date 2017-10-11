@@ -190,7 +190,7 @@ public final class Cache implements Closeable, Flushable {
     return ByteString.encodeUtf8(source).md5().hex();
   }
   public static String composeKey(Request request,String dynamicKey,String dynamicKeyGroup){
-    return  key(request.url().toString()+PREFIX_DYNAMIC_KEY+dynamicKey+PREFIX_DYNAMIC_KEY_GROUP+dynamicKeyGroup);
+    return  key(request.url().toString()+PREFIX_DYNAMIC_KEY+dynamicKey)+(dynamicKeyGroup==null?"":PREFIX_DYNAMIC_KEY_GROUP+dynamicKeyGroup);
   }
 
   /**
