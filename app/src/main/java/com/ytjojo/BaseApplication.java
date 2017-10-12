@@ -81,4 +81,5 @@ public class BaseApplication extends Application {
         super.onTrimMemory(level);
     }
 
+
 }

@@ -24,6 +24,7 @@ import okhttp3.CookieJar;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import retrofit2.Converter;
+import retrofit2.MergeParameterHandler;
 import retrofit2.ProxyHandler;
 import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava.RxJavaCallAdapterFactory;
@@ -47,6 +48,12 @@ public class RetrofitClient {
     private HeaderInterceptor mHeaderInterceptor;
     public void putHeader(String key,String value){
         mHeaderInterceptor.putHeader(key,value);
+    }
+
+    private static MergeParameterHandler sMergeParameterHandler;
+
+    public static MergeParameterHandler getMergeParameterHandler(){
+        return sMergeParameterHandler;
     }
 
     /**
@@ -194,6 +201,10 @@ public class RetrofitClient {
         }
         public Builder okhttpClient(OkHttpClient client){
             this.okHttpClient = client;
+            return this;
+        }
+        public Builder mergeParameterHandler(MergeParameterHandler handler){
+            RetrofitClient.sMergeParameterHandler = handler;
             return this;
         }
         public RetrofitClient build(){

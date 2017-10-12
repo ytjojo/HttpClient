@@ -5,7 +5,9 @@ import com.google.gson.TypeAdapter;
 import com.google.gson.internal.Primitives;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonWriter;
+import com.ytjojo.http.RetrofitClient;
 import com.ytjojo.http.util.CollectionUtils;
+
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
@@ -13,10 +15,12 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+
 import okhttp3.MediaType;
 import okhttp3.RequestBody;
 import okio.Buffer;
 import retrofit2.http.ArrayItem;
+import retrofit2.http.BodyJsonAttr;
 import retrofit2.http.NgariJsonPost;
 
 /**
@@ -41,8 +45,13 @@ public class ParameterMerge {
         }
         if(handlers.get(0).getAnnotation() instanceof ArrayItem){
             mergeArrayBodyJson(builder,handlers);
-        }else{
+        }else if(handlers.get(0).getAnnotation() instanceof BodyJsonAttr){
             mergeAttrBodyJson(builder,handlers);
+        }else{
+            MergeParameterHandler handler = RetrofitClient.getMergeParameterHandler();
+            if(handler != null){
+                handler.merge(builder,annotations,handlers);
+            }
         }
         return builder;
     }
@@ -69,8 +78,7 @@ public class ParameterMerge {
                     if(Primitives.isPrimitive(handler.getType())){
 //                        Type type =  $Gson$Types.canonicalize(handler.getType());
 //                        $Gson$Types.getRawType(type);
-                        TypeAdapter<?> typeAdapter = gson.getAdapter(TypeToken.get(type));
-                        TypeAdapter<Object> adapter = (TypeAdapter<Object>) typeAdapter;
+                        TypeAdapter<Object> adapter = (TypeAdapter<Object>)  gson.getAdapter(TypeToken.get(type));
                         adapter.write(writer,handler.getValue());
                     }else{
                         writer.jsonValue(gson.toJson(item, handler.getType()));
