@@ -62,6 +62,14 @@ public final class DateTypeAdapter extends TypeAdapter<Date> {
       } catch (ParseException e) {
 
       }
+      try{
+        Date date =new Date();
+        date.setTime(GMTDateUtils.parseExpires(json,0,json.length()));
+        return date;
+      }catch (IllegalArgumentException e){
+
+      }
+
     }
     try {
       return FORMAT_UTC.parse(json);
@@ -78,7 +86,7 @@ public final class DateTypeAdapter extends TypeAdapter<Date> {
     } catch (ParseException e) {
       parseException = e;
     }
-    Date result= DateUtils.parseDate(json);
+    Date result= UTCDateUtils.parseDate(json);
     if(result == null){
       throw new JsonSyntaxException(json, parseException);
     }

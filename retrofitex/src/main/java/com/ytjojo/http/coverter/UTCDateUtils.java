@@ -14,7 +14,7 @@ import java.util.TimeZone;
  * modified by http://joeblow.iteye.com 
  * 2010-11-11 
  */  
-public class DateUtils {  
+public class UTCDateUtils {
   
     /** 1 Day in Millis */  
     public static final long DAY = 24L * 60L * 60L * 1000L;  

@@ -3,10 +3,14 @@ package com.ytjojo.practice;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.ytjojo.http.coverter.DateTypeAdapter;
+import com.ytjojo.http.coverter.GMTDateUtils;
 
 import org.junit.Test;
 
 import java.util.Date;
+import java.util.TimeZone;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import okio.ByteString;
 
@@ -78,5 +82,22 @@ public class GsonTest {
         Gson gson =builder.create();
         DateModel people = gson.fromJson(json, DateModel.class);
         System.out.println(people.birthday);
+    }
+    @Test
+    public void dateTest(){
+        String s = "2016-08-12T16:00Z";
+//        Pattern GMT_PATTERN1
+//                = Pattern.compile(".*GMT\\+{0,1}(\\d{2,2}):{0,1}\\d{0,2}.*");
+//        Matcher matcher = GMT_PATTERN1.matcher(s);
+//        System.out.println(matcher.matches());
+//        System.out.println(matcher.group(1)+ "   ");
+
+        Date date = new Date();
+//        s = date.toString();
+        System.out.println(s);
+        long m = GMTDateUtils.parseExpires(s,0,s.length());
+        date = new Date();
+        date.setTime(m);
+        System.out.println(date.toString());
     }
 }
