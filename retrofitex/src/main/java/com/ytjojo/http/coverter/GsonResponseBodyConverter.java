@@ -22,6 +22,7 @@ import com.google.gson.TypeAdapter;
 import com.google.gson.internal.$Gson$Types;
 import com.ytjojo.http.ServerResponse;
 import com.ytjojo.http.exception.APIException;
+import com.ytjojo.http.exception.JsonException;
 import com.ytjojo.http.util.TextUtils;
 
 import java.io.IOException;
@@ -52,33 +53,37 @@ final class GsonResponseBodyConverter<T> implements Converter<ResponseBody, T> {
 			throw new APIException(-3, "response is null");
 		}
 
-		JsonElement root = mGson.fromJson(value, JsonElement.class);
-		JsonObject response = root.getAsJsonObject();
+		try{
+			JsonElement root = mGson.fromJson(value, JsonElement.class);
+			JsonObject response = root.getAsJsonObject();
+			int code = response.get("code").getAsInt();
+			JsonElement msgJE = response.get("msg");
+			String msg = msgJE == null ? null : msgJE.getAsString();
+			if (code != ServerResponse.RESULT_OK) {
+				throw new APIException(code, msg, value);
+			}
+			if (type instanceof Class) {
+				if (type == String.class) {
+					JsonElement bodyJson = response.get("body");
+					return bodyJson!=null?(T)bodyJson.getAsString():null;
+				}
+				if (type == Void.class) {
+					return null;
+				}
+				if (type == JsonObject.class) {
+					//如果返回结果是JSONObject则无需经过Gson
+					return (T)(response);
+				}
+				if(!(ServerResponse.class.isAssignableFrom((Class<?>) type))){
+					Type wrapperType = $Gson$Types.newParameterizedTypeWithOwner(null,ServerResponse.class,type);
+					ServerResponse<?> wrapper = mGson.fromJson(value, wrapperType);
+					return (T) wrapper.body;
+				}
+			}
+			return mGson.fromJson(value, type);
+		}catch (Exception e){
+			throw new JsonException("json解析失败",e);
+		}
 
-		int code = response.get("code").getAsInt();
-		JsonElement msgJE = response.get("msg");
-		String msg = msgJE == null ? null : msgJE.getAsString();
-		if (code != ServerResponse.RESULT_OK) {
-			throw new APIException(code, msg, value);
-		}
-		if (type instanceof Class) {
-			if (type == String.class) {
-				JsonElement bodyJson = response.get("body");
-				return bodyJson!=null?(T)bodyJson.getAsString():null;
-			}
-			if (type == Void.class) {
-				return null;
-			}
-			if (type == JsonObject.class) {
-				//如果返回结果是JSONObject则无需经过Gson
-				return (T)(response);
-			}
-			if(!(ServerResponse.class.isAssignableFrom((Class<?>) type))){
-				Type wrapperType = $Gson$Types.newParameterizedTypeWithOwner(null,ServerResponse.class,type);
-				ServerResponse<?> wrapper = mGson.fromJson(value, wrapperType);
-				return (T) wrapper.body;
-			}
-		}
-		return mGson.fromJson(value, type);
 	}
 }

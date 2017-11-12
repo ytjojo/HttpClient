@@ -16,10 +16,13 @@
 package com.ytjojo.http.coverter;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.TypeAdapter;
 import com.google.gson.reflect.TypeToken;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
+import java.util.Date;
+
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit2.Converter;
@@ -39,7 +42,11 @@ public final class GsonConverterFactory extends Converter.Factory {
    * decoding from JSON (when no charset is specified by a header) will use UTF-8.
    */
   public static GsonConverterFactory create() {
-    return create(new Gson());
+    GsonBuilder builder = new GsonBuilder();
+    builder.enableComplexMapKeySerialization()
+            .serializeNulls();
+    builder.registerTypeAdapterFactory(DateTypeAdapter.FACTORY);
+    return create(builder.create());
   }
 
   /**

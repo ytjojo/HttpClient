@@ -17,8 +17,12 @@
 package com.ytjojo.http.cookie;
 
 
+import android.content.Context;
+
 import com.ytjojo.http.cookie.cache.CookieCache;
+import com.ytjojo.http.cookie.cache.SetCookieCache;
 import com.ytjojo.http.cookie.persistence.CookiePersistor;
+import com.ytjojo.http.cookie.persistence.SharedPrefsCookiePersistor;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -32,6 +36,12 @@ public class PersistentCookieJar implements ClearableCookieJar {
     private CookieCache cache;
     private CookiePersistor persistor;
 
+    public PersistentCookieJar(Context context) {
+        this.cache = new SetCookieCache();
+        this.persistor = new SharedPrefsCookiePersistor(context);
+
+        this.cache.addAll(persistor.loadAll());
+    }
     public PersistentCookieJar(CookieCache cache, CookiePersistor persistor) {
         this.cache = cache;
         this.persistor = persistor;
@@ -42,7 +52,18 @@ public class PersistentCookieJar implements ClearableCookieJar {
     @Override
     synchronized public void saveFromResponse(HttpUrl url, List<Cookie> cookies) {
         cache.addAll(cookies);
-        persistor.saveAll(cookies);
+        persistor.saveAll(filterPersistentCookies(cookies));
+    }
+
+    private static List<Cookie> filterPersistentCookies(List<Cookie> cookies) {
+        List<Cookie> persistentCookies = new ArrayList<>();
+
+        for (Cookie cookie : cookies) {
+            if (cookie.persistent()) {
+                persistentCookies.add(cookie);
+            }
+        }
+        return persistentCookies;
     }
 
     @Override

@@ -2,6 +2,7 @@ package com.ytjojo.practice;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.ytjojo.http.coverter.DateTypeAdapter;
 
 import org.junit.Test;
 
@@ -59,5 +60,23 @@ public class GsonTest {
     }
     public static String key(String key){
       return ByteString.encodeUtf8(key).md5().utf8();
+    }
+
+    public static class DateModel{
+        public Date birthday;
+    }
+
+    @Test
+    public void testDate(){
+        String json ="{\"birthday\":\"Thu Oct 16 07:13:48 GMT 2014\"}";
+//        String json ="{\"birthday\":\"Thu Oct 16 07:13:48 GMT 2015\"}";
+        System.out.println(json);
+        GsonBuilder builder = new GsonBuilder();
+        builder.enableComplexMapKeySerialization()
+                .serializeNulls();
+        builder.registerTypeAdapterFactory(DateTypeAdapter.FACTORY);
+        Gson gson =builder.create();
+        DateModel people = gson.fromJson(json, DateModel.class);
+        System.out.println(people.birthday);
     }
 }
