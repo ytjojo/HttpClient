@@ -17,13 +17,13 @@ public class UriTest {
 
 	@Test
 	public void testuri(){
-			String s= "htt://www.baidu.com/user?un=123232&name=ss&sex={sex}&age=20";
+			String s= "http://www.baidu.com/user?un=123232&name=ss&sex={sex}&age=20";
 			Uri uri =Uri.parse(s);
 			String un  =uri.getQueryParameter("un");
 			System.out.println(un);
 			String name  =uri.getQueryParameter("name");
 			System.out.println(name);
-			uri =uri.replaceQueryParameter("sex","男").build();
+			uri =uri.replaceQueryParameter("sex","111").build();
 			System.out.println(uri.getQueryParameter("sex"));
 			//uri = uri.buildUpon().appendQueryParameter("abc","人民日报").build();
 			//System.out.println(uri.getQueryParameter("abc"));

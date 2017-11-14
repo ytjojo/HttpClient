@@ -14,6 +14,6 @@ import okhttp3.MediaType;
 public interface MergeParameterHandler {
     MediaType MEDIA_TYPE = MediaType.parse("application/json; charset=UTF-8");
     Charset UTF_8 = Charset.forName("UTF-8");
-    RequestBuilder merge(RequestBuilder builder, ArrayList<Annotation> annotations, ArrayList<MoreParameterHandler<?>> handlers) throws IOException;
+    RequestBuilder merge(RequestBuilder builder, ArrayList<Annotation> annotations, ArrayList<MoreParameterHandler<?>> handlers,Object... args) throws IOException;
 
 }

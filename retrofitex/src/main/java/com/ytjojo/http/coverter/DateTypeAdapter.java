@@ -64,7 +64,7 @@ public final class DateTypeAdapter extends TypeAdapter<Date> {
       }
       try{
         Date date =new Date();
-        date.setTime(GMTDateUtils.parseExpires(json,0,json.length()));
+        date.setTime(GMTDateUtils.parseDate(json,0,json.length()));
         return date;
       }catch (IllegalArgumentException e){
 

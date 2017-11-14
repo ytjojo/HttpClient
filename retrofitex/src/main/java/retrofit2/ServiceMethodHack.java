@@ -124,7 +124,7 @@ final class ServiceMethodHack<R, T> {
       }
       handlers[p].apply(requestBuilder, args[p]);
     }
-    mParameterMerge.merge(requestBuilder,annotations, mMoreParameterHandlers);
+    mParameterMerge.merge(requestBuilder,annotations, mMoreParameterHandlers,args);
     return requestBuilder.build();
   }
 
@@ -713,14 +713,14 @@ final class ServiceMethodHack<R, T> {
         }
         gotUrl = true;
         if(annotation instanceof ArrayItem){
-          return new MoreParameterHandler<>(null,type,annotation);
+          return new MoreParameterHandler<>(null,type,annotation,p);
         }else{
           String paramName = ((BodyJsonAttr)annotation).value();
           if(TextUtils.isEmpty(paramName)){
             throw parameterError(p,
                     "@BodyJsonAttr parameters cannot be empty.");
           }
-          return new MoreParameterHandler<>(paramName,type,annotation);
+          return new MoreParameterHandler<>(paramName,type,annotation,p);
         }
 
       }

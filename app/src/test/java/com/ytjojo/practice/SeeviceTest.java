@@ -123,4 +123,23 @@ public class SeeviceTest {
 //		 okhttp3.Request request =builder1.build();
 		System.out.println(ss);
 	}
+	@Test
+	public void array(){
+		ProxyHandler.create(retrofit,GitApiInterface.class).getAddrArea(null,0).subscribe(new Subscriber<JsonObject>() {
+			@Override
+			public void onCompleted() {
+
+			}
+
+			@Override
+			public void onError(Throwable e) {
+
+			}
+
+			@Override
+			public void onNext(JsonObject jsonObject) {
+				System.out.print(jsonObject.toString());
+			}
+		});
+	}
 }

@@ -12,22 +12,20 @@ import static retrofit2.Utils.checkNotNull;
 public class MoreParameterHandler<T> extends ParameterHandler<T> {
     private final Type type;
 //    private final Converter<T, String> converter;
-    private String paramName;
-    private Object value;
-    private Annotation annotation;
+    final private String paramName;
+    final private Annotation annotation;
+    final private int index;
 
-    MoreParameterHandler(String paramName, Type type ,Annotation annotation) {
+    MoreParameterHandler(String paramName, Type type ,Annotation annotation,int index) {
         this.type = checkNotNull(type, "type == null");
         this.paramName = paramName;
         this.annotation = annotation;
+        this.index = index;
     }
 
     @Override
     void apply(RequestBuilder builder, T value) throws IOException {
-        this.value = value;
-    }
-    public Object getValue(){
-      return value;
+        //do nothing
     }
     public Type getType(){
         return type;
@@ -37,5 +35,8 @@ public class MoreParameterHandler<T> extends ParameterHandler<T> {
     }
     public Annotation getAnnotation(){
         return annotation;
+    }
+    public int getIndex(){
+        return  index;
     }
 }
