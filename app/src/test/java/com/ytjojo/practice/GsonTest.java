@@ -4,13 +4,11 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.ytjojo.http.coverter.DateTypeAdapter;
 import com.ytjojo.http.coverter.GMTDateUtils;
+import com.ytjojo.http.coverter.UTCDateUtils;
 
 import org.junit.Test;
 
 import java.util.Date;
-import java.util.TimeZone;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import okio.ByteString;
 
@@ -95,9 +93,10 @@ public class GsonTest {
         Date date = new Date();
 //        s = date.toString();
         System.out.println(s);
-        long m = GMTDateUtils.parseExpires(s,0,s.length());
-        date = new Date();
-        date.setTime(m);
+        date = UTCDateUtils.parseDate(s);
+//        long m = GMTDateUtils.parseDate(s,0,s.length());
+//        date = new Date();
+//        date.setTime(m);
         System.out.println(date.toString());
     }
 }

@@ -30,7 +30,7 @@ public class ParameterMerge {
     private static final MediaType MEDIA_TYPE = MediaType.parse("application/json; charset=UTF-8");
     private static final Charset UTF_8 = Charset.forName("UTF-8");
     private String serviceId,method;
-    public RequestBuilder merge(RequestBuilder builder,ArrayList<Annotation> annotations, ArrayList<MoreParameterHandler<?>> handlers) throws IOException {
+    public RequestBuilder merge(RequestBuilder builder,ArrayList<Annotation> annotations, ArrayList<MoreParameterHandler<?>> handlers,Object... args) throws IOException {
         if(handlers ==null ||handlers.isEmpty()){
             return builder;
         }
@@ -44,18 +44,18 @@ public class ParameterMerge {
             }
         }
         if(handlers.get(0).getAnnotation() instanceof ArrayItem){
-            mergeArrayBodyJson(builder,handlers);
+            mergeArrayBodyJson(builder,handlers,args);
         }else if(handlers.get(0).getAnnotation() instanceof BodyJsonAttr){
-            mergeAttrBodyJson(builder,handlers);
+            mergeAttrBodyJson(builder,handlers,args);
         }else{
             MergeParameterHandler handler = RetrofitClient.getMergeParameterHandler();
             if(handler != null){
-                handler.merge(builder,annotations,handlers);
+                handler.merge(builder,annotations,handlers,args);
             }
         }
         return builder;
     }
-    private void  mergeArrayBodyJson(RequestBuilder builder, ArrayList<MoreParameterHandler<?>> handlers) throws IOException{
+    private void  mergeArrayBodyJson(RequestBuilder builder, ArrayList<MoreParameterHandler<?>> handlers,Object... args) throws IOException{
         Gson gson = new Gson();
         Buffer buffer = new Buffer();
         Writer jsonWriter = new OutputStreamWriter(buffer.outputStream(), UTF_8);
@@ -70,7 +70,8 @@ public class ParameterMerge {
         writer .beginArray();
         if(!CollectionUtils.isEmpty(handlers)){
             for (MoreParameterHandler<?> handler:handlers) {
-                Object item = handler.getValue();
+                final int index = handler.getIndex();
+                final Object item = args[index];
                 if (item == null) {
                     writer.nullValue();
                 } else {
@@ -79,7 +80,7 @@ public class ParameterMerge {
 //                        Type type =  $Gson$Types.canonicalize(handler.getType());
 //                        $Gson$Types.getRawType(type);
                         TypeAdapter<Object> adapter = (TypeAdapter<Object>)  gson.getAdapter(TypeToken.get(type));
-                        adapter.write(writer,handler.getValue());
+                        adapter.write(writer,item);
                     }else{
                         writer.jsonValue(gson.toJson(item, handler.getType()));
                     }
@@ -93,7 +94,7 @@ public class ParameterMerge {
         writer.close();
         builder.setBody(RequestBody.create(MEDIA_TYPE, buffer.readByteString()));
     }
-    private void  mergeAttrBodyJson(RequestBuilder builder, ArrayList<MoreParameterHandler<?>> handlers) throws IOException{
+    private void  mergeAttrBodyJson(RequestBuilder builder, ArrayList<MoreParameterHandler<?>> handlers,Object... args) throws IOException{
         Gson gson = new Gson();
         Buffer buffer = new Buffer();
         Writer jsonWriter = new OutputStreamWriter(buffer.outputStream(), UTF_8);
@@ -102,7 +103,8 @@ public class ParameterMerge {
         writer.beginObject();
         if(!CollectionUtils.isEmpty(handlers)){
             for (MoreParameterHandler<?> handler:handlers) {
-                Object item = handler.getValue();
+                final int index = handler.getIndex();
+                final Object item = args[index];
                 writer.name(handler.getParamName());
                 if (item == null) {
                     writer.nullValue();
@@ -113,7 +115,7 @@ public class ParameterMerge {
 //                        $Gson$Types.getRawType(type);
                         TypeAdapter<?> typeAdapter = gson.getAdapter(TypeToken.get(type));
                         TypeAdapter<Object> adapter = (TypeAdapter<Object>) typeAdapter;
-                        adapter.write(writer,handler.getValue());
+                        adapter.write(writer,item);
                     }else{
                         writer.jsonValue(gson.toJson(item, handler.getType()));
                     }

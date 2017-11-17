@@ -37,7 +37,7 @@ public class GMTDateUtils {
             = Pattern.compile(".*GMT\\+{0,1}(\\d{2,2}):{0,1}\\d{0,2}.*");
 
     /** Parse a date as specified in RFC 6265, section 5.1.1. */
-    public static long parseExpires(String s, int pos, int limit) {
+    public static long parseDate(String s, int pos, int limit) {
         pos = dateCharacterOffset(s, pos, limit, false);
         int timeZoneOffet=0;
         if(s.contains("GMT")){
