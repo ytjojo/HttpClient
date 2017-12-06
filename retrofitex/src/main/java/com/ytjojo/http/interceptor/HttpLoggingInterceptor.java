@@ -235,13 +235,16 @@ public final class HttpLoggingInterceptor implements Interceptor {
           logger.log("<-- END HTTP (binary " + buffer.size() + "-byte body omitted)");
           return response;
         }
-        logger.log(requestStartMessage);
-        if(requestBodyContent !=null && requestBodyContent.length()>0){
-          logger.log("<-- requestBody " + requestBodyContent + "   -->");
-        }
+
         if (contentLength != 0) {
-          logger.log("");
-          logger.log(buffer.clone().readString(charset));
+          StringBuilder sb = new StringBuilder(requestStartMessage);
+          sb.append("\n");
+          if(requestBodyContent !=null && requestBodyContent.length()>0){
+            sb.append("<-- requestBody " + requestBodyContent + "   -->");
+            sb.append("\n");
+          }
+          sb.append(buffer.clone().readString(charset));
+          logger.log(sb.toString());
         }
 
         logger.log("<-- END HTTP (" + buffer.size() + "-byte body)");

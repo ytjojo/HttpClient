@@ -32,12 +32,9 @@ public class ResponseMapper  implements Func1<ResponseBody,File> {
         }
     };
     public void subscribe(Subscriber<ProgressInfo> subscriber){
-        Observable.create(mGenerator).sample(30, TimeUnit.MILLISECONDS).observeOn(AndroidSchedulers.mainThread()).subscribe(subscriber);
+        Observable.unsafeCreate(mGenerator).sample(30, TimeUnit.MILLISECONDS).observeOn(AndroidSchedulers.mainThread()).subscribe(subscriber);
     }
 
-//    public ResponseMapper(File file){
-//        mFile = file;
-//    }
     public ResponseMapper(String absDir,String  fileName){
        this.mAbsDir = absDir;
         this.mFileName = fileName;

@@ -20,7 +20,7 @@ public abstract class TokenRefreshHandler {
     Throwable mAuthThrwable;
 
     public <T> Observable<T> getObservable(Callable<T> callable){
-       Observable<T> observable = Observable.create(new Observable.OnSubscribe<T>() {
+       Observable<T> observable = Observable.unsafeCreate(new Observable.OnSubscribe<T>() {
             @Override public void call(Subscriber<? super T> subscriber) {
                 try {
                     T value =  callable.call();

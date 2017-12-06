@@ -62,7 +62,7 @@ public class Rxtest {
     }
 
     public Observable<Integer> getObservable() {
-        return Observable.create(new Observable.OnSubscribe<Integer>() {
+        return Observable.unsafeCreate(new Observable.OnSubscribe<Integer>() {
             @Override
             public void call(Subscriber<? super Integer> subscriber) {
 //                subscriber.onNext(1);

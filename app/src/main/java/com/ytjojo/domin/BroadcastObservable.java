@@ -27,7 +27,7 @@ public class BroadcastObservable implements Observable.OnSubscribe<Boolean> {
     }
 
     public static Observable<Boolean> fromConnectivityManager(Context context) {
-        return Observable.create(new BroadcastObservable(context)).share();
+        return Observable.unsafeCreate(new BroadcastObservable(context)).share();
     }
 
     private static Subscription unsubscribeInUiThread(final Action0 unsubscribe) {

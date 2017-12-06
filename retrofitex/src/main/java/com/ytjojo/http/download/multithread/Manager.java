@@ -374,7 +374,7 @@ public class Manager extends SourceGenerator<ProgressInfo> {
 //
 //            }
 //        });
-        Observable.create(new SourceGenerator<Boolean>() {
+        Observable.unsafeCreate(new SourceGenerator<Boolean>() {
             @Override
             public void onStart() {
                 task.execute(getOkHttpClient(), getRequest());
@@ -410,7 +410,7 @@ public class Manager extends SourceGenerator<ProgressInfo> {
     Subscriber<ProgressInfo> mStateSubscriber;
     public static void subscribe(Manager manager,Subscriber<ProgressInfo> subscriber){
         manager.mStateSubscriber = subscriber;
-        Observable.create(manager)
+        Observable.unsafeCreate(manager)
                 .subscribeOn(Schedulers.io())
                 .retryWhen(new RetryWhenNetworkException())
                 .observeOn(AndroidSchedulers.mainThread()).subscribe(subscriber);

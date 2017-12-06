@@ -7,19 +7,11 @@ import android.hardware.SensorManager;
 import android.support.v4.util.Pair;
 
 import com.orhanobut.logger.Logger;
-import com.trello.rxlifecycle.LifecycleTransformer;
-import com.ytjojo.http.exception.APIException;
-import com.ytjojo.http.exception.AuthException;
 
-import java.net.ConnectException;
-import java.net.SocketTimeoutException;
-import java.net.UnknownHostException;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
-import retrofit2.HttpException;
 import rx.Observable;
 import rx.Scheduler;
 import rx.Subscriber;
@@ -39,9 +31,8 @@ import rx.subscriptions.Subscriptions;
 public class RxCreator {
 
 
-
     public static <T> Observable<T> periodically(long INITIAL_DELAY, long POLLING_INTERVAL, Func0<T> func0) {
-        return Observable.create(new Observable.OnSubscribe<T>() {
+        return Observable.unsafeCreate(new Observable.OnSubscribe<T>() {
             Subscription subscription;
 
             @Override
@@ -57,122 +48,24 @@ public class RxCreator {
                         }
                     }
                 }, INITIAL_DELAY, POLLING_INTERVAL, TimeUnit.MILLISECONDS);
+                subscriber.add(Subscriptions.create(new Action0() {
+                    @Override
+                    public void call() {
+                        try {
+                            subscription.unsubscribe();
+                        } catch (Exception ex) {
+                            // checking for subscribers before emitting values
+                            if (!subscriber.isUnsubscribed()) {
+                                // (2) - reporting exceptions via onError()
+                                subscriber.onError(ex);
+                            }
+                        }
+                    }
+                }));
             }
         });
     }
 
-    public static Func1<Observable<? extends Throwable>, Observable<?>> getRetryFunc1(){
-        return new Func1<Observable<? extends Throwable>, Observable<?>>() {
-            private int retryDelaySecond =5;
-            private int retryCount =0;
-            private int maxRetryCount =3;
-            @Override
-            public Observable<?> call(Observable<? extends Throwable> observable) {
-                return observable.flatMap(new Func1<Throwable, Observable<?>>() {
-                    @Override
-                    public Observable<?> call(Throwable throwable) {
-                        return checkApiError(throwable);
-                    }
-                });
-            }
-            private Observable<?> checkApiError(Throwable throwable) {
-                retryCount++;
-                System.out.println(retryCount+"retryCount--"+Thread.currentThread().getName());
-                if(throwable instanceof ConnectException
-                        || throwable instanceof SocketTimeoutException
-                        || throwable instanceof TimeoutException || throwable instanceof UnknownHostException) {
-                    if (retryCount < maxRetryCount) {
-                        retryCount = maxRetryCount;
-                        return retry(throwable);
-                    }
-                }else if(throwable instanceof HttpException){
-                    HttpException he = (HttpException) throwable;
-                    if(he.code()==401||he.code() ==403||he.code() == 409){
-                        if(retryCount <maxRetryCount){
-                            login();
-                            return  retry(throwable);
-                        }else{
-                            return Observable.error(new AuthException(throwable));
-                        }
-
-                    }
-                }else if(throwable instanceof AuthException){
-                    login();
-                    if (retryCount < maxRetryCount) {
-                        retryCount = maxRetryCount;
-                        return retry(throwable);
-                    }
-                }else if(throwable instanceof APIException){
-                    return Observable.error(throwable);
-                }
-                return Observable.error(throwable);
-            }
-
-            /**
-             *
-             * @param throwable
-             * @return
-             */
-            private Observable<?> retry(Throwable throwable) {
-                if(retryCount<=maxRetryCount){
-                    return  Observable.timer(retryDelaySecond,
-                            TimeUnit.SECONDS).observeOn(Schedulers.io());
-                }else{
-                    return  Observable.error(throwable);
-                }
-            }
-            private void login(){
-
-            }
-        };
-    }
-
-    public static <T> Observable.Transformer<T, T> applySchedulers() {
-        return new Observable.Transformer<T, T>() {
-            @Override
-            public Observable<T> call(Observable<T> observable) {
-                return observable.subscribeOn(Schedulers.io())
-                        .observeOn(AndroidSchedulers.mainThread()).retryWhen(getRetryFunc1());
-            }
-        };
-    }
-    public static <T> Observable.Transformer<T, T> applySchedulersNewThread() {
-        return new Observable.Transformer<T, T>() {
-            @Override
-            public Observable<T> call(Observable<T> observable) {
-                return observable.subscribeOn(Schedulers.io())
-                        .observeOn(Schedulers.newThread());
-            }
-        };
-    }
-
-    public static <T> Observable.Transformer<T, T> applySchedulersIO() {
-        return new Observable.Transformer<T, T>() {
-            @Override
-            public Observable<T> call(Observable<T> observable) {
-                return observable.subscribeOn(rx.schedulers.Schedulers.io())
-                        .unsubscribeOn(rx.schedulers.Schedulers.io());
-            }
-        };
-    }
-    public static <T> Observable.Transformer<T, T> applySchedulers(final LifecycleTransformer transformer) {
-        return new Observable.Transformer<T, T>() {
-            @Override
-            public Observable<T> call(Observable<T> observable) {
-                return observable.subscribeOn(Schedulers.io())
-                        .observeOn(AndroidSchedulers.mainThread()).retryWhen(getRetryFunc1()).compose(transformer);
-            }
-        };
-    }
-
-
-    public static <T> void applySchedulers(Observable<T> observable) {
-        observable.compose(applySchedulers());
-    }
-
-    //    public static <T> Observable.Transformer<T, T> applySchedulers() {
-//        return (Observable.Transformer<T, T>) schedulersTransformer;
-//    }
 
 
     public static <T, R> Observable<Pair<T, R>> subscribeAllFinish(Observable<T> o1, Observable<R> o2) {
@@ -241,29 +134,19 @@ public class RxCreator {
 
     }
 
-    public static  <T> Observable<T> createDefer(Func0<Observable<T>> func0) {
+    public static <T> Observable<T> createDefer(Func0<Observable<T>> func0) {
         return Observable.defer(func0);
     }
 
 
-    public <T> Observable<T> create(final Callable<String> callable) {
-        Observable.fromCallable(new Callable<String>() {
+    public <T> Observable<T> create(final Callable<T> callable) {
+        return Observable.fromCallable(new Callable<T>() {
             @Override
-            public String call() throws Exception {
+            public T call() throws Exception {
                 return callable.call();
             }
         });
-        return Observable.create(new Observable.OnSubscribe<T>() {
-            @Override
-            public void call(Subscriber<? super T> subscriber) {
-                if (subscriber != null & subscriber.isUnsubscribed()) {
-                    return;
-                }
 
-                subscriber.onCompleted();
-
-            }
-        });
     }
 
     //// 界面按钮需要防止连续点击的情况
@@ -315,34 +198,12 @@ public class RxCreator {
         return observable.toList().toBlocking().single();
     }
 
-    public static <T> Observable.Transformer<T, T> io_main() {
-        return tObservable -> tObservable.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread());
-    }
 
-    public static void verifyLogin(Observable<String> ObservableEmail, Observable<String> ObservablePassword) {
-        Observable.combineLatest(ObservableEmail, ObservablePassword, new Func2<String, String, Boolean>() {
+    public static Observable<Boolean> verifyLogin(Observable<String> ObservableEmail, Observable<String> ObservablePassword) {
+        return Observable.combineLatest(ObservableEmail, ObservablePassword, new Func2<String, String, Boolean>() {
             @Override
             public Boolean call(String email, String password) {
                 return isEmailValid(email) && isPasswordValid(password);
-            }
-        }).subscribe(new Subscriber<Boolean>() {
-            @Override
-            public void onCompleted() {
-
-            }
-
-            @Override
-            public void onError(Throwable e) {
-
-            }
-
-            @Override
-            public void onNext(Boolean verify) {
-                if (verify) {
-                    //
-                } else {
-                    //
-                }
             }
         });
     }
@@ -447,7 +308,7 @@ public class RxCreator {
     //}
 
     public Observable<SensorEvent> naiveObserveSensorChanged(final SensorManager sensorManager, final Sensor sensor, final int samplingPreiodUs) {
-        return Observable.create(new Observable.OnSubscribe<SensorEvent>() {
+        return Observable.unsafeCreate(new Observable.OnSubscribe<SensorEvent>() {
             @Override
             public void call(final Subscriber<? super SensorEvent> subscriber) {
                 final SensorEventListener sensorEventListener = new SensorEventListener() {
@@ -490,7 +351,7 @@ public class RxCreator {
         return Observable.defer(new Func0<Observable<T>>() {
             @Override
             public Observable<T> call() {
-                return Observable.create(new EventObservable<T>(source));
+                return Observable.unsafeCreate(new EventObservable<T>(source));
             }
         });
 

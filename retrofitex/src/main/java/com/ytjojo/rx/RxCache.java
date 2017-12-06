@@ -36,7 +36,7 @@ public class RxCache {
      * @return
      */
     public static <T> Observable<T> load(final Context context, final String cacheKey, final long expireTime, Observable<T> fromNetwork, boolean forceRefresh) {
-        Observable<T> fromCache = Observable.create(new Observable.OnSubscribe<T>() {
+        Observable<T> fromCache = Observable.unsafeCreate(new Observable.OnSubscribe<T>() {
             @Override
             public void call(Subscriber<? super T> subscriber) {
                 T cache = (T) CacheManager.readObject(context, cacheKey, expireTime);
