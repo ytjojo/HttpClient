@@ -7,16 +7,16 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Created by Administrator on 2016/10/29 0029.
  */
-public class ServiceMethodCach {
-    private static volatile ServiceMethodCach instance;
-    private ServiceMethodCach(Retrofit retrofit){
+public class ServiceMethodCache {
+    private static volatile ServiceMethodCache instance;
+    private ServiceMethodCache(Retrofit retrofit){
         this.mRetrofit = retrofit;
     }
-    public static ServiceMethodCach getInstance(Retrofit retrofit){
+    public static ServiceMethodCache getInstance(Retrofit retrofit){
         if(instance ==null){
-            synchronized (ServiceMethodCach.class){
+            synchronized (ServiceMethodCache.class){
                 if(instance ==null){
-                    instance = new ServiceMethodCach(retrofit);
+                    instance = new ServiceMethodCache(retrofit);
                 }
             }
         }

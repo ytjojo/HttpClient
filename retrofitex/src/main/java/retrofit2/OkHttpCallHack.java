@@ -16,6 +16,10 @@
 package retrofit2;
 
 import java.io.IOException;
+
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.GuardedBy;
+
 import okhttp3.MediaType;
 import okhttp3.Request;
 import okhttp3.ResponseBody;
@@ -24,18 +28,23 @@ import okio.BufferedSource;
 import okio.ForwardingSource;
 import okio.Okio;
 
+import static retrofit2.Utils.checkNotNull;
+
 final class OkHttpCallHack<T> implements Call<T> {
   private final ServiceMethodHack<T, ?> serviceMethod;
-  private final Object[] args;
+  private final @Nullable
+  Object[] args;
 
   private volatile boolean canceled;
 
-  // All guarded by this.
-  private okhttp3.Call rawCall;
-  private Throwable creationFailure; // Either a RuntimeException or IOException.
+  @GuardedBy("this")
+  private @Nullable okhttp3.Call rawCall;
+  @GuardedBy("this")
+  private @Nullable Throwable creationFailure; // Either a RuntimeException or IOException.
+  @GuardedBy("this")
   private boolean executed;
 
-  OkHttpCallHack(ServiceMethodHack<T, ?> serviceMethod, Object[] args) {
+  OkHttpCallHack(ServiceMethodHack<T, ?> serviceMethod,@Nullable Object[] args) {
     this.serviceMethod = serviceMethod;
     this.args = args;
   }
@@ -69,7 +78,7 @@ final class OkHttpCallHack<T> implements Call<T> {
   }
 
   @Override public void enqueue(final Callback<T> callback) {
-    if (callback == null) throw new NullPointerException("callback == null");
+    checkNotNull(callback, "callback == null");
 
     okhttp3.Call call;
     Throwable failure;
@@ -232,7 +241,12 @@ final class OkHttpCallHack<T> implements Call<T> {
   }
 
   @Override public boolean isCanceled() {
-    return canceled;
+    if (canceled) {
+      return true;
+    }
+    synchronized (this) {
+      return rawCall != null && rawCall.isCanceled();
+    }
   }
 
   static final class NoContentResponseBody extends ResponseBody {
