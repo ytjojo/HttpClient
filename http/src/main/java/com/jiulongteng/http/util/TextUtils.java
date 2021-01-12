@@ -17,8 +17,6 @@
 package com.jiulongteng.http.util;
 
 import android.os.Parcel;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.text.AndroidCharacter;
 import android.text.GetChars;
 import android.text.InputType;
@@ -30,6 +28,11 @@ import android.text.SpannedString;
 import android.text.style.ReplacementSpan;
 import android.util.Printer;
 import android.view.View;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+
 import java.lang.reflect.Array;
 import java.util.Iterator;
 import java.util.Locale;

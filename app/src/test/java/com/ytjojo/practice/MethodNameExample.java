@@ -4,6 +4,8 @@ import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 
+import java.sql.Statement;
+
 /**
  * Created by xiaochuang on 7/9/16.
  */

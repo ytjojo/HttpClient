@@ -1,16 +1,8 @@
 package com.ytjojo.practice;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.ytjojo.http.coverter.DateTypeAdapter;
-import com.ytjojo.http.coverter.GMTDateUtils;
-import com.ytjojo.http.coverter.UTCDateUtils;
-
-import org.junit.Test;
 
 import java.util.Date;
 
-import okio.ByteString;
 
 /**
  * Created by Administrator on 2017/7/29 0029.

@@ -7,6 +7,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.TypeAdapter;
 import com.google.gson.internal.$Gson$Types;
+import com.google.gson.reflect.TypeToken;
 import com.jiulongteng.http.entities.IResult;
 import com.jiulongteng.http.entities.StandardResult;
 import com.jiulongteng.http.exception.APIException;
@@ -41,15 +42,15 @@ final class GsonResponseBodyConverter<T> implements Converter<ResponseBody, T> {
         bufferedSource.close();
         if (!TextUtils.isEmpty(responseStingBody))
             try {
-                JsonObject jsonObject = ((JsonElement) this.mGson.fromJson(responseStingBody, JsonElement.class)).getAsJsonObject();
-                int code = jsonObject.get("code").getAsInt();
-                JsonElement messageElement = jsonObject.get("message");
+                StandardResult<JsonElement> standardResult = this.mGson.fromJson(responseStingBody, new TypeToken<StandardResult<JsonElement>>(){}.getType());
+                int code = standardResult.code;
+                String message =  standardResult.getMessage();
 
                 if (code != 40400) {
                     if (code == 0) {
                         if (this.type instanceof Class) {
                             if (this.type == String.class) {
-                                JsonElement jsonElement = jsonObject.get("data");
+                                JsonElement jsonElement = standardResult.data;
                                 return (T) jsonElement.getAsString();
                             }
                             if (this.type == Object.class){
@@ -59,24 +60,24 @@ final class GsonResponseBodyConverter<T> implements Converter<ResponseBody, T> {
                                 return null;
                             }
                             if (JsonElement.class.isAssignableFrom((Class) this.type)){
-                                return (T) jsonObject;
+                                return (T) mGson.fromJson(responseStingBody, JsonElement.class);
                             }
-                            if (this.type instanceof ParameterizedType && IResult.class.isAssignableFrom((Class) type)){
-                                return (T) this.mGson.fromJson(jsonObject, this.type);
+                            if (IResult.class.isAssignableFrom((Class) type)){
+                                return (T) this.mGson.fromJson(responseStingBody, this.type);
                             }
                         }
                         if (this.type instanceof ParameterizedType && IResult.class.isAssignableFrom((Class) ((ParameterizedType) this.type).getRawType())){
-                            return (T) this.mGson.fromJson(jsonObject, this.type);
+                            return (T) this.mGson.fromJson(responseStingBody, this.type);
                         }
                         ParameterizedType parameterizedType = $Gson$Types.newParameterizedTypeWithOwner(null, StandardResult.class, new Type[]{this.type});
-                        return (T) ((StandardResult) this.mGson.fromJson(jsonObject, parameterizedType)).data;
+                        return (T) ((StandardResult) this.mGson.fromJson(responseStingBody, parameterizedType)).data;
                     }else {
-                        APIException apiException = new APIException(code,messageElement.getAsString());
+                        APIException apiException = new APIException(code,message);
                         throw apiException;
                     }
 
                 }else {
-                    TokenInvalidException tokenInvalidException = new TokenInvalidException(40400, messageElement.getAsString());
+                    TokenInvalidException tokenInvalidException = new TokenInvalidException(40400,message);
                     throw tokenInvalidException;
                 }
 

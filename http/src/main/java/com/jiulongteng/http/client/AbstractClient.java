@@ -97,23 +97,6 @@ public abstract class AbstractClient {
         };
     }
 
-    public <T> void get(@Nullable LifecycleOwner lifecycleOwner, String url, HttpCallback<T> httpCallback) {
-        get(lifecycleOwner, url, null, httpCallback);
-    }
-
-    public <T> void get(@Nullable LifecycleOwner lifecycleOwner, String url, @Nullable String[] params, HttpCallback<T> httpCallback) {
-
-        url = getUrl(url, params);
-        ((Service) getService(Service.class)).get(getHeaders(), url).flatMap(flatmap(lifecycleOwner)).map(map(httpCallback)).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe((Observer) httpCallback);
-    }
-
-    public <T> void get(String url, HttpCallback<T> httpCallback) {
-        get(null, url, null, httpCallback);
-    }
-
-    public <T> void get(String url, @Nullable String[] params, HttpCallback<T> httpCallback) {
-        get(null, url, null, httpCallback);
-    }
 
     public String getBaseUrl() {
         return this.baseUrl;
@@ -231,6 +214,11 @@ public abstract class AbstractClient {
         throw new IllegalArgumentException("数组 querys 长度必须为偶数");
     }
 
+
+    public void setTag(Object tag) {
+        this.tag = tag;
+    }
+
     public <T> Function<Response<ResponseBody>, StandardResult<T>> map(final HttpCallback<T> callback) {
         return new Function<Response<ResponseBody>, StandardResult<T>>() {
             public StandardResult<T> apply(Response<ResponseBody> param1Response) throws Throwable {
@@ -244,7 +232,7 @@ public abstract class AbstractClient {
         };
     }
 
-    public <T> void post(@Nullable LifecycleOwner lifecycleOwner, String url, @Nullable Object body, HttpCallback<T> httpCallback
+    final public <T> void post(@Nullable LifecycleOwner lifecycleOwner, String url, @Nullable Object body, HttpCallback<T> httpCallback
     ) {
         Observable<Response<ResponseBody>> observable;
         if (getBaseUrl() == null)
@@ -258,9 +246,25 @@ public abstract class AbstractClient {
         observable.flatMap(flatmap(lifecycleOwner)).map(map(httpCallback)).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe((Observer) httpCallback);
     }
 
-    public void setTag(Object paramObject) {
-        this.tag = paramObject;
+
+    final public <T> void get(@Nullable LifecycleOwner lifecycleOwner, String url, HttpCallback<T> httpCallback) {
+        get(lifecycleOwner, url, null, httpCallback);
     }
+
+    final public <T> void get(@Nullable LifecycleOwner lifecycleOwner, String url, @Nullable String[] params, HttpCallback<T> httpCallback) {
+
+        url = getUrl(url, params);
+        ((Service) getService(Service.class)).get(getHeaders(), url).flatMap(flatmap(lifecycleOwner)).map(map(httpCallback)).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe((Observer) httpCallback);
+    }
+
+    final public <T> void get(String url, HttpCallback<T> httpCallback) {
+        get(null, url, null, httpCallback);
+    }
+
+    final public <T> void get(String url, @Nullable String[] params, HttpCallback<T> httpCallback) {
+        get(null, url, null, httpCallback);
+    }
+
 
     public static interface Service {
         @RawString

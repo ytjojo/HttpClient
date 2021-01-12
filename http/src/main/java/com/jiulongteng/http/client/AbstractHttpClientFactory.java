@@ -14,10 +14,20 @@ public abstract class AbstractHttpClientFactory implements IHttpClientFactory {
     ConcurrentHashMap<String, AbstractClient> clientsByUrl = new ConcurrentHashMap<String, AbstractClient>();
 
     public AbstractClient createByTag(Object tag) {
+        if(httpClientBuilder != null){
+            return httpClientBuilder.createByTag(tag);
+        }
         return null;
     }
 
     public AbstractClient createByUrl(String baseUrl) {
+
+        if(httpClientBuilder != null){
+            AbstractClient client =  httpClientBuilder.createByUrl(baseUrl);
+            if(client != null){
+                return client;
+            }
+        }
         return new HttpClient(baseUrl);
     }
 
@@ -65,7 +75,14 @@ public abstract class AbstractHttpClientFactory implements IHttpClientFactory {
         }
         abstractClient.attachToFactory(this);
     }
+    private IHttpClientBuilder httpClientBuilder;
 
+    public void setHttpClientBuilder(IHttpClientBuilder httpClientBuilder){
+        this.httpClientBuilder = httpClientBuilder;
+    }
+    public void setShowLog(boolean isShowLog){
+        this.isShowLog = isShowLog;
+    }
 
 }
 

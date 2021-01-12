@@ -17,16 +17,6 @@ public class DefaultFactory extends AbstractHttpClientFactory {
 
     }
 
-    public AbstractClient createByTag(Object tag) {
-        return super.createByTag(tag);
-    }
-
-    public AbstractClient createByUrl(String baseUrl) {
-        return super.createByUrl(baseUrl);
-    }
-
-
-
     public AbstractClient getDefaultClient(String baseUrl) {
         return getByUrl(baseUrl);
     }

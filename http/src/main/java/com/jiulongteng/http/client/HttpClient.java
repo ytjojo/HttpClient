@@ -14,7 +14,7 @@ public class HttpClient extends AbstractClient {
 
   @Override
   public long getMaxCacheSize() {
-    return 50* 1000_000;
+    return 50 * 1000_000;
   }
 }
 
