@@ -1,6 +1,8 @@
 package com.jiulongteng.http.https;
 
 
+import android.os.Build;
+
 import androidx.core.util.Pair;
 
 import java.io.IOException;
@@ -28,6 +30,13 @@ import javax.net.ssl.X509TrustManager;
  */
 public class HttpsDelegate {
 
+
+    public static enum KeyStoreType {
+        BKS,
+        PKCS12
+    }
+    public static KeyStoreType sKeyStoreType = KeyStoreType.BKS;
+
     private static volatile HttpsDelegate mInstance;
 
     private HttpsDelegate() {
@@ -53,15 +62,27 @@ public class HttpsDelegate {
         return getSslSocketFactory(certificates, null, null);
     }
 
+    public static Pair<SSLSocketFactory, X509TrustManager> getSslSocketFactory(InputStream bksFile, String password) {
+        return getSslSocketFactory(null, bksFile, password);
+
+    }
+
     public static Pair<SSLSocketFactory, X509TrustManager> getSslSocketFactory(InputStream[] certificates, InputStream bksFile, String password) {
         Pair<SSLSocketFactory, X509TrustManager> sslParams = null;
         try {
             TrustManager[] trustManagers = prepareTrustManager(certificates);
-            KeyManager[] keyManagers = prepareKeyManager(bksFile, password);
-            SSLContext sslContext = SSLContext.getInstance("TLS");
+            KeyManager[] keyManagers = getKeyManagers(bksFile, password.toCharArray());
+            SSLContext sslContext = null;
+
+            if (Build.VERSION.SDK_INT >= 29) {
+                sslContext = SSLContext.getInstance("TLSv1.3");
+            } else {
+                sslContext = SSLContext.getInstance("TLSv1.2");
+
+            }
             X509TrustManager trustManager = null;
             if (trustManagers != null) {
-                trustManager = new MyTrustManager(chooseTrustManager(trustManagers));
+                trustManager = new TrustManagerCompat(chooseTrustManager(trustManagers));
             } else {
                 trustManager = new UnSafeTrustManager();
             }
@@ -112,9 +133,8 @@ public class HttpsDelegate {
                 } catch (IOException e) {
                 }
             }
-            TrustManagerFactory trustManagerFactory = null;
 
-            trustManagerFactory = TrustManagerFactory.
+            TrustManagerFactory trustManagerFactory = TrustManagerFactory.
                     getInstance(TrustManagerFactory.getDefaultAlgorithm());
             trustManagerFactory.init(keyStore);
 
@@ -134,31 +154,38 @@ public class HttpsDelegate {
 
     }
 
-    private static KeyManager[] prepareKeyManager(InputStream bksFile, String password) {
+
+
+    /**
+     * 客户端证书
+     *
+     * @return
+     */
+    private static KeyManager[] getKeyManagers(InputStream inputStream, char[] password) {
+        if (inputStream == null ||  password == null) {
+            return null;
+        }
+        KeyStore clientKeyStore = null;
         try {
-            if (bksFile == null || password == null) return null;
-
-            KeyStore clientKeyStore = KeyStore.getInstance("BKS");
-            clientKeyStore.load(bksFile, password.toCharArray());
+            clientKeyStore = KeyStore.getInstance(sKeyStoreType.name());
+            clientKeyStore.load(inputStream, password);
             KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-            keyManagerFactory.init(clientKeyStore, password.toCharArray());
+            keyManagerFactory.init(clientKeyStore, password);
             return keyManagerFactory.getKeyManagers();
-
         } catch (KeyStoreException e) {
-            e.printStackTrace();
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (UnrecoverableKeyException e) {
             e.printStackTrace();
         } catch (CertificateException e) {
             e.printStackTrace();
-        } catch (IOException e) {
+        } catch (UnrecoverableKeyException e) {
             e.printStackTrace();
-        } catch (Exception e) {
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
             e.printStackTrace();
         }
         return null;
     }
+
 
     private static X509TrustManager chooseTrustManager(TrustManager[] trustManagers) {
         for (TrustManager trustManager : trustManagers) {
@@ -170,14 +197,14 @@ public class HttpsDelegate {
     }
 
 
-    private static class MyTrustManager implements X509TrustManager {
+    private static class TrustManagerCompat implements X509TrustManager {
         private X509TrustManager defaultTrustManager;
         private X509TrustManager localTrustManager;
 
-        public MyTrustManager(X509TrustManager localTrustManager) throws NoSuchAlgorithmException, KeyStoreException {
-            TrustManagerFactory var4 = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-            var4.init((KeyStore) null);
-            defaultTrustManager = chooseTrustManager(var4.getTrustManagers());
+        public TrustManagerCompat(X509TrustManager localTrustManager) throws NoSuchAlgorithmException, KeyStoreException {
+            TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+            trustManagerFactory.init((KeyStore) null);
+            defaultTrustManager = chooseTrustManager(trustManagerFactory.getTrustManagers());
             this.localTrustManager = localTrustManager;
         }
 

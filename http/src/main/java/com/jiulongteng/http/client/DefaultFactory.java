@@ -3,7 +3,7 @@ package com.jiulongteng.http.client;
 
 
 public class DefaultFactory extends AbstractHttpClientFactory {
-    static DefaultFactory sInstance;
+    static volatile DefaultFactory sInstance;
 
     public static DefaultFactory getInstance() {
         if (sInstance == null) {

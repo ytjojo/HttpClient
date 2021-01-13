@@ -221,18 +221,18 @@ public abstract class AbstractClient {
 
     public <T> Function<Response<ResponseBody>, StandardResult<T>> map(final HttpCallback<T> callback) {
         return new Function<Response<ResponseBody>, StandardResult<T>>() {
-            public StandardResult<T> apply(Response<ResponseBody> param1Response) throws Throwable {
-                T data = (T) getRetrofit().responseBodyConverter(callback.getResultType(), new Annotation[0]).convert(param1Response.body());
+            public StandardResult<T> apply(Response<ResponseBody> rawResponse) throws Throwable {
+                T data = (T) getRetrofit().responseBodyConverter(callback.getResultType(), new Annotation[0]).convert(rawResponse.body());
                 StandardResult<T> standardResult = new StandardResult();
                 standardResult.data = data;
-                standardResult.headers = param1Response.headers();
+                standardResult.headers = rawResponse.headers();
                 standardResult.code = 0;
                 return standardResult;
             }
         };
     }
 
-    final public <T> void post(@Nullable LifecycleOwner lifecycleOwner, String url, @Nullable Object body, HttpCallback<T> httpCallback
+    public <T> void post(@Nullable LifecycleOwner lifecycleOwner, String url, @Nullable Object body, HttpCallback<T> httpCallback
     ) {
         Observable<Response<ResponseBody>> observable;
         if (getBaseUrl() == null)
@@ -247,21 +247,21 @@ public abstract class AbstractClient {
     }
 
 
-    final public <T> void get(@Nullable LifecycleOwner lifecycleOwner, String url, HttpCallback<T> httpCallback) {
+    public <T> void get(@Nullable LifecycleOwner lifecycleOwner, String url, HttpCallback<T> httpCallback) {
         get(lifecycleOwner, url, null, httpCallback);
     }
 
-    final public <T> void get(@Nullable LifecycleOwner lifecycleOwner, String url, @Nullable String[] params, HttpCallback<T> httpCallback) {
+    public <T> void get(@Nullable LifecycleOwner lifecycleOwner, String url, @Nullable String[] params, HttpCallback<T> httpCallback) {
 
         url = getUrl(url, params);
         ((Service) getService(Service.class)).get(getHeaders(), url).flatMap(flatmap(lifecycleOwner)).map(map(httpCallback)).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe((Observer) httpCallback);
     }
 
-    final public <T> void get(String url, HttpCallback<T> httpCallback) {
+    public <T> void get(String url, HttpCallback<T> httpCallback) {
         get(null, url, null, httpCallback);
     }
 
-    final public <T> void get(String url, @Nullable String[] params, HttpCallback<T> httpCallback) {
+    public <T> void get(String url, @Nullable String[] params, HttpCallback<T> httpCallback) {
         get(null, url, null, httpCallback);
     }
 
@@ -285,6 +285,7 @@ public abstract class AbstractClient {
         Observable<Response<ResponseBody>> post(@HeaderMap Map<String, String> params, @Url String url, @Body Object body);
 
         @POST
+        @RawString
         Observable<Response<ResponseBody>> upload(@HeaderMap Map<String, String> params, @Url String url, @Body MultipartBody multipartBody);
     }
 }
