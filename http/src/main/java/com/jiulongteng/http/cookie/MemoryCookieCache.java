@@ -19,11 +19,13 @@ package com.jiulongteng.http.cookie;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 
 import okhttp3.Cookie;
+import okhttp3.HttpUrl;
 
-public class SetCookieCache implements CookieCache {
+public class SetCookieCache implements ClearableCookieJar {
 
     private Set<IdentifiableCookie> cookies;
 
@@ -54,6 +56,16 @@ public class SetCookieCache implements CookieCache {
     @Override
     public Iterator<Cookie> iterator() {
         return new SetCookieCacheIterator();
+    }
+
+    @Override
+    public void saveFromResponse(HttpUrl url, List<Cookie> cookies) {
+
+    }
+
+    @Override
+    public List<Cookie> loadForRequest(HttpUrl url) {
+        return null;
     }
 
     private class SetCookieCacheIterator implements Iterator<Cookie> {
