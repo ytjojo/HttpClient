@@ -16,6 +16,7 @@
 
 package com.jiulongteng.http.cookie;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -25,18 +26,16 @@ import java.util.Set;
 import okhttp3.Cookie;
 import okhttp3.HttpUrl;
 
-public class SetCookieCache implements ClearableCookieJar {
+public class MemoryCookieCache implements ClearableCookieJar {
 
     private Set<IdentifiableCookie> cookies;
+    SetCookieCacheIterator iterator;
 
-    public SetCookieCache() {
+    public MemoryCookieCache() {
         cookies = new HashSet<>();
+        iterator = new SetCookieCacheIterator();
     }
 
-    @Override
-    public void addAll(Collection<Cookie> newCookies) {
-        updateCookies(IdentifiableCookie.decorateAll(newCookies));
-    }
 
     /**
      * All cookies will be added to the collection, already existing cookies will be overwritten by the new ones.
@@ -53,19 +52,40 @@ public class SetCookieCache implements ClearableCookieJar {
         cookies.clear();
     }
 
-    @Override
     public Iterator<Cookie> iterator() {
-        return new SetCookieCacheIterator();
+        return iterator;
     }
 
     @Override
     public void saveFromResponse(HttpUrl url, List<Cookie> cookies) {
+        updateCookies(IdentifiableCookie.decorateAll(cookies));
+    }
 
+    public void addAll(List<Cookie> cookies){
+        this.cookies.addAll(IdentifiableCookie.decorateAll(cookies));
     }
 
     @Override
     public List<Cookie> loadForRequest(HttpUrl url) {
-        return null;
+        List<Cookie> validCookies = new ArrayList<>();
+        Iterator<Cookie> it = iterator();
+        while (it.hasNext()) {
+            Cookie currentCookie = it.next();
+
+            if (isCookieExpired(currentCookie)) {
+                it.remove();
+
+            } else if (currentCookie.matches(url)) {
+                validCookies.add(currentCookie);
+            }
+        }
+
+        return validCookies;
+
+    }
+
+    private static boolean isCookieExpired(Cookie cookie) {
+        return cookie.expiresAt() < System.currentTimeMillis();
     }
 
     private class SetCookieCacheIterator implements Iterator<Cookie> {

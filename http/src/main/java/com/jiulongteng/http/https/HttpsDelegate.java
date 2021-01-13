@@ -37,22 +37,11 @@ public class HttpsDelegate {
     }
     public static KeyStoreType sKeyStoreType = KeyStoreType.BKS;
 
-    private static volatile HttpsDelegate mInstance;
 
     private HttpsDelegate() {
 
     }
 
-    public static HttpsDelegate getInstance() {
-        if (null == mInstance) {
-            synchronized (HttpsDelegate.class) {
-                if (null == mInstance) {
-                    mInstance = new HttpsDelegate();
-                }
-            }
-        }
-        return mInstance;
-    }
 
     public static Pair<SSLSocketFactory, X509TrustManager> getUnsafeSslSocketFactory() {
         return getSslSocketFactory(null, null, null);
