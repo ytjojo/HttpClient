@@ -65,6 +65,7 @@ public abstract class AbstractClient {
     private Object tag;
 
     public AbstractClient() {
+
     }
 
     public AbstractClient(String baseUrl) {

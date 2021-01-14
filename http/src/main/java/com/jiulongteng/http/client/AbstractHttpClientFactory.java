@@ -14,17 +14,16 @@ public abstract class AbstractHttpClientFactory implements IHttpClientFactory {
     ConcurrentHashMap<String, AbstractClient> clientsByUrl = new ConcurrentHashMap<String, AbstractClient>();
 
     public AbstractClient createByTag(Object tag) {
-        if(httpClientBuilder != null){
+        if (httpClientBuilder != null) {
             return httpClientBuilder.createByTag(tag);
         }
         return null;
     }
 
     public AbstractClient createByUrl(String baseUrl) {
-
-        if(httpClientBuilder != null){
-            AbstractClient client =  httpClientBuilder.createByUrl(baseUrl);
-            if(client != null){
+        if (httpClientBuilder != null) {
+            AbstractClient client = httpClientBuilder.createByUrl(baseUrl);
+            if (client != null) {
                 return client;
             }
         }
@@ -38,11 +37,11 @@ public abstract class AbstractHttpClientFactory implements IHttpClientFactory {
                     .retryOnConnectionFailure(true)
                     .readTimeout(15L, TimeUnit.SECONDS);
 
-
             this.baseOkHttpClient = builder.build();
         }
         return this.baseOkHttpClient;
     }
+
 
     public boolean isShowLog() {
         return isShowLog;
@@ -75,12 +74,14 @@ public abstract class AbstractHttpClientFactory implements IHttpClientFactory {
         }
         abstractClient.attachToFactory(this);
     }
+
     private IHttpClientBuilder httpClientBuilder;
 
-    public void setHttpClientBuilder(IHttpClientBuilder httpClientBuilder){
+    public void setHttpClientBuilder(IHttpClientBuilder httpClientBuilder) {
         this.httpClientBuilder = httpClientBuilder;
     }
-    public void setShowLog(boolean isShowLog){
+
+    public void setShowLog(boolean isShowLog) {
         this.isShowLog = isShowLog;
     }
 

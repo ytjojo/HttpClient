@@ -44,12 +44,24 @@ public class StandardResult<T> implements IResult {
         this.throwable = throwable;
     }
 
+    @Override
+    public int getCode() {
+        return code;
+    }
+
     public String getMessage() {
         Throwable throwable = this.throwable;
         return (throwable != null) ? throwable.getMessage() : this.message;
     }
 
-    public boolean isSuccess() {
+
+
+    @Override
+    public boolean isInvalidToken() {
+        return getCode() == 40400;
+    }
+    @Override
+    public boolean isSuccessful() {
         return (code == 0 || code == 200);
     }
 }
