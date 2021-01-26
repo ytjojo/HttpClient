@@ -43,7 +43,6 @@ public class MemoryCookieCache implements ClearableCookieJar {
      * @param cookies
      */
     private void updateCookies(Collection<IdentifiableCookie> cookies) {
-        this.cookies.removeAll(cookies);
         this.cookies.addAll(cookies);
     }
 
