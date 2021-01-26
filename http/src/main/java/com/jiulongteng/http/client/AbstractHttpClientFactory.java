@@ -1,5 +1,9 @@
 package com.jiulongteng.http.client;
 
+import android.content.Context;
+
+import com.jiulongteng.http.util.ContextProvider;
+
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -13,11 +17,25 @@ public abstract class AbstractHttpClientFactory implements IHttpClientFactory {
 
     ConcurrentHashMap<String, AbstractClient> clientsByUrl = new ConcurrentHashMap<String, AbstractClient>();
 
+    private static Context sContext;
+
     public AbstractClient createByTag(Object tag) {
         if (httpClientBuilder != null) {
             return httpClientBuilder.createByTag(tag);
         }
         return null;
+    }
+
+    public static void setApplication(Context context) {
+        sContext = context.getApplicationContext();
+    }
+
+    @Override
+    public Context getContext() {
+        if (sContext == null) {
+            sContext = ContextProvider.getContext();
+        }
+        return sContext;
     }
 
     public AbstractClient createByUrl(String baseUrl) {
@@ -85,5 +103,12 @@ public abstract class AbstractHttpClientFactory implements IHttpClientFactory {
         this.isShowLog = isShowLog;
     }
 
+    @Override
+    public AbstractClient getDefaultClient() {
+        if (httpClientBuilder != null) {
+            httpClientBuilder.getDefaultClient();
+        }
+        return null;
+    }
 }
 

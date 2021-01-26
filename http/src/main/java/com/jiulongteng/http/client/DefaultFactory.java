@@ -5,6 +5,7 @@ package com.jiulongteng.http.client;
 public class DefaultFactory extends AbstractHttpClientFactory {
     static volatile DefaultFactory sInstance;
 
+
     public static DefaultFactory getInstance() {
         if (sInstance == null) {
             synchronized (DefaultFactory.class) {
@@ -14,11 +15,8 @@ public class DefaultFactory extends AbstractHttpClientFactory {
             }
         }
         return sInstance;
-
     }
 
-    public AbstractClient getDefaultClient(String baseUrl) {
-        return getByUrl(baseUrl);
-    }
+
 }
   

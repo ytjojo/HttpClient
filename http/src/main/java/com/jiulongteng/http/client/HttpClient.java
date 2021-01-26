@@ -7,15 +7,9 @@ public class HttpClient extends AbstractClient {
     super(baeUrl);
   }
 
-  @Override
-  public File getHttpCache() {
-    return null;
-  }
 
-  @Override
-  public long getMaxCacheSize() {
-    return 50 * 1000_000;
-  }
+
+
 }
 
 
