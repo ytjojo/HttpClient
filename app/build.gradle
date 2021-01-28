@@ -37,28 +37,8 @@ android {
 //        testInstrumentationRunner "${applicationId}.runner.RxAndroidJUnitRunner"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
-    productFlavors {
-        Store360 {
-//            manifestPlaceholders = [CHANNEL_VALUE: "Store360"]
-            buildConfigField "String", "AUTO_TYPE", "\"360\""
-        }
-//        QQ {}
-//        WanDouJia {}
-//        Xiaomi {}
-//        Flyme {}
-//        Market91 {}
-//        AnZhuo {}
-//        BaiDu {}
-//        AnZhi {}
-//        GFeng {}
-//        AppChina {}
-//        EoeMarket {}
-//        PP {}
-    }
 
-//        productFlavors.all { flavor ->
-//        flavor.manifestPlaceholders = [CHANNEL_VALUE: name]
-//    }
+
 
     packagingOptions {
         exclude 'META-INF/DEPENDENCIES.txt'

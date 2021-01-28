@@ -3,6 +3,7 @@ package com.jiulongteng.http.callback;
 import com.google.gson.internal.$Gson$Types;
 import com.jiulongteng.http.entities.StandardResult;
 import com.jiulongteng.http.exception.ExceptionHandle;
+import com.jiulongteng.http.rx.SimpleObserver;
 
 import io.reactivex.rxjava3.core.Observer;
 import io.reactivex.rxjava3.disposables.Disposable;
@@ -10,7 +11,7 @@ import io.reactivex.rxjava3.disposables.Disposable;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
-public abstract class HttpCallback<T> implements Observer<StandardResult<T>> {
+public abstract class HttpCallback<T> extends SimpleObserver<StandardResult<T>> {
     private Type type;
 
     private Type getSuperclassTypeParameter(Class<?> paramClass) {

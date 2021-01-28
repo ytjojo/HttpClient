@@ -15,6 +15,13 @@ import com.trello.rxlifecycle4.android.ActivityEvent;
 import com.trello.rxlifecycle4.android.FragmentEvent;
 import com.trello.rxlifecycle4.components.support.RxFragment;
 
+import java.io.EOFException;
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.ObservableEmitter;
@@ -24,14 +31,6 @@ import io.reactivex.rxjava3.functions.BiFunction;
 import io.reactivex.rxjava3.functions.Function;
 import io.reactivex.rxjava3.functions.Predicate;
 import io.reactivex.rxjava3.schedulers.Schedulers;
-
-import java.io.EOFException;
-import java.net.ConnectException;
-import java.net.SocketTimeoutException;
-import java.net.UnknownHostException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
 import io.reactivex.rxjava3.subjects.Subject;
 import retrofit2.HttpException;
 
@@ -39,9 +38,9 @@ public class RxHelper {
 
     public static Function<Observable<? extends Throwable>, Observable<?>> getRetryFunction() {
         return new Function<Observable<? extends Throwable>, Observable<?>>() {
-            private int retryDelaySecond =2;
+            private long retryDelay = 1000;
             private int retryCount = 0;
-            private int maxRetryCount =3;
+            private int maxRetryCount = 3;
 
             @Override
             public Observable<?> apply(Observable<? extends Throwable> observable) {
@@ -98,8 +97,8 @@ public class RxHelper {
              */
             private Observable<?> retry(Throwable throwable) {
                 if (retryCount <= maxRetryCount) {
-                    return Observable.timer(retryDelaySecond,
-                            TimeUnit.SECONDS).observeOn(Schedulers.io());
+                    return Observable.timer(retryDelay,
+                            TimeUnit.MILLISECONDS).observeOn(Schedulers.io());
                 } else {
                     return Observable.error(ExceptionHandle.handleException(throwable));
                 }
@@ -113,7 +112,6 @@ public class RxHelper {
 
 
     /**
-     *
      * @param <T>
      * @return
      */
@@ -139,7 +137,6 @@ public class RxHelper {
             }
         };
     }
-
 
 
     public static <T> ObservableTransformer<T, T> applySchedulers(LifecycleTransformer<T> transformer) {
@@ -207,7 +204,8 @@ public class RxHelper {
             }
         });
     }
-    public static  <T,R> void  observeWhen(Observable<T> observable, Subject<R> subject){
+
+    public static <T, R> void observeWhen(Observable<T> observable, Subject<R> subject) {
         observable.zipWith(subject.hide(), new BiFunction<T, R, T>() {
 
             @Override

@@ -1,8 +1,5 @@
 package com.jiulongteng.http.client;
 
-import android.net.Uri;
-import android.text.TextUtils;
-
 import androidx.annotation.Nullable;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleOwner;
@@ -14,10 +11,13 @@ import com.jiulongteng.http.entities.StandardResult;
 import com.jiulongteng.http.https.UnSafeHostnameVerifier;
 import com.jiulongteng.http.interceptor.HttpLoggingInterceptor;
 import com.jiulongteng.http.interceptor.InvocationLogger;
+import com.jiulongteng.http.request.HttpRequest;
+import com.jiulongteng.http.request.IRequest;
 import com.trello.lifecycle4.android.lifecycle.AndroidLifecycle;
 
 import java.io.File;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -36,6 +36,7 @@ import io.reactivex.rxjava3.core.Observer;
 import io.reactivex.rxjava3.functions.Function;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import okhttp3.Cache;
+import okhttp3.HttpUrl;
 import okhttp3.Interceptor;
 import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
@@ -54,7 +55,6 @@ import retrofit2.http.Part;
 import retrofit2.http.Url;
 
 public abstract class AbstractClient {
-    private String baseUrl;
 
     IHttpClientFactory iHttpClientFactory;
 
@@ -63,21 +63,31 @@ public abstract class AbstractClient {
     private Retrofit retrofit;
 
     private Object tag;
+    String mBaseUrl;
 
     public AbstractClient() {
 
     }
 
     public AbstractClient(String baseUrl) {
-        this.baseUrl = baseUrl;
+        this.mBaseUrl = baseUrl;
     }
 
     public void attachToFactory(IHttpClientFactory httpClientFactory) {
         this.iHttpClientFactory = httpClientFactory;
     }
 
+    public IHttpClientFactory getHttpClientFactory() {
+        return iHttpClientFactory;
+    }
+
     public Retrofit createRetrofit() {
-        Retrofit.Builder builder = (new Retrofit.Builder()).baseUrl(this.baseUrl).addConverterFactory(getConverterFactory()).client(getOkhttpClient(this.iHttpClientFactory));
+        Retrofit.Builder builder = (new Retrofit.Builder()).
+                addConverterFactory(getConverterFactory())
+                .client(createOkhttpClient(this.iHttpClientFactory));
+        if (getBaseUrl() != null) {
+            builder.baseUrl(this.getBaseUrl());
+        }
         CallAdapter.Factory factory = getCallAdapterFactory();
         if (factory != null)
             builder.addCallAdapterFactory(factory);
@@ -100,7 +110,7 @@ public abstract class AbstractClient {
 
 
     public String getBaseUrl() {
-        return this.baseUrl;
+        return this.mBaseUrl.toString();
     }
 
     public CallAdapter.Factory getCallAdapterFactory() {
@@ -119,17 +129,16 @@ public abstract class AbstractClient {
         return new ArrayList<Interceptor>();
     }
 
-    public OkHttpClient getOkHttpClient() {
-        return this.okHttpClient;
-    }
 
-    public OkHttpClient getOkhttpClient(IHttpClientFactory iHttpClientFactory) {
+    public OkHttpClient createOkhttpClient(IHttpClientFactory iHttpClientFactory) {
         OkHttpClient.Builder builder = iHttpClientFactory.getBaseOkHttpClient().newBuilder();
         ArrayList<Interceptor> arrayList = getInterceptors();
         if (arrayList != null && !arrayList.isEmpty()) {
             Iterator<Interceptor> iterator = arrayList.iterator();
-            while (iterator.hasNext())
+            while (iterator.hasNext()) {
                 builder.addInterceptor(iterator.next());
+            }
+
         }
 
         if (isShowLog() && iHttpClientFactory.isShowLog()) {
@@ -148,6 +157,7 @@ public abstract class AbstractClient {
 
             builder.sslSocketFactory(sslSocketFactory, trustManager);
         }
+        builder.hostnameVerifier(getHostnameVerifier());
         if (getHttpCache() != null) {
             Cache cache = new Cache(getHttpCache(), getMaxCacheSize());
             builder.cache(cache);
@@ -158,13 +168,26 @@ public abstract class AbstractClient {
         return okHttpClient;
     }
 
+    public OkHttpClient getOkHttpClient() {
+        if (this.okHttpClient == null) {
+            createOkhttpClient(iHttpClientFactory);
+        }
+        return okHttpClient;
+
+    }
+
+
     protected boolean isShowLog() {
         return false;
     }
 
-    public abstract File getHttpCache();
+    public File getHttpCache() {
+        return new File(getHttpClientFactory().getContext().getCacheDir(), "http");
+    }
 
-    public abstract long getMaxCacheSize();
+    public long getMaxCacheSize() {
+        return 50 * 1000_000;
+    }
 
     public OkHttpClient.Builder configOkHttpClient(OkHttpClient.Builder builder) {
         return builder;
@@ -197,22 +220,31 @@ public abstract class AbstractClient {
         return this.tag;
     }
 
-    public String getUrl(String url, String[] params) {
-        Uri.Builder uriBuilder = null;
-        if (!TextUtils.isEmpty(getBaseUrl())) {
-            uriBuilder = Uri.parse(baseUrl).buildUpon().appendPath(url);
-        } else {
-            uriBuilder = Uri.parse(url).buildUpon().appendPath(url);
-        }
+
+    public static HashMap<String, String> array2Map(String[] params) {
         if (params == null || params.length == 0) {
-            return uriBuilder.build().toString();
+            return new HashMap<>();
         } else if (params.length % 2 == 0) {
-            for (byte i = 0; i < params.length; i += 2) {
-                uriBuilder.appendQueryParameter(params[i], params[i + 1]);
+            HashMap<String, String> paramsMap = new HashMap<>();
+            for (int i = 0; i < params.length; i += 2) {
+                paramsMap.put(params[i], params[i + 1]);
+            }
+            return paramsMap;
+        }
+        return new HashMap<String, String>();
+    }
+
+    public static String getUrl(String baseUrl, String relativeUrl, HashMap<String, String> params) {
+        HttpUrl.Builder uriBuilder = baseUrl == null || relativeUrl.startsWith("http://") || relativeUrl.startsWith("https://") ? HttpUrl.get(relativeUrl).newBuilder() : HttpUrl.get(baseUrl).newBuilder();
+
+        if (params == null || params.size() == 0) {
+            return uriBuilder.build().toString();
+        } else {
+            for (Map.Entry<String, String> entry : params.entrySet()) {
+                uriBuilder.addQueryParameter(entry.getKey(), entry.getValue());
             }
             return uriBuilder.build().toString();
         }
-        throw new IllegalArgumentException("数组 querys 长度必须为偶数");
     }
 
 
@@ -220,74 +252,95 @@ public abstract class AbstractClient {
         this.tag = tag;
     }
 
-    public <T> Function<Response<ResponseBody>, StandardResult<T>> map(final HttpCallback<T> callback) {
+    public <T> Function<Response<ResponseBody>, StandardResult<T>> map(Type type) {
         return new Function<Response<ResponseBody>, StandardResult<T>>() {
             public StandardResult<T> apply(Response<ResponseBody> rawResponse) throws Throwable {
-                T data = (T) getRetrofit().responseBodyConverter(callback.getResultType(), new Annotation[0]).convert(rawResponse.body());
+                T data = (T) getRetrofit().responseBodyConverter(type, new Annotation[0]).convert(rawResponse.body());
                 StandardResult<T> standardResult = new StandardResult();
                 standardResult.data = data;
-                standardResult.headers = rawResponse.headers();
+                standardResult.setHeaders( rawResponse.headers());
                 standardResult.code = 0;
                 return standardResult;
             }
         };
     }
 
-    public <T> void post(@Nullable LifecycleOwner lifecycleOwner, String url, @Nullable Object body, HttpCallback<T> httpCallback
+    public <T> void post(@Nullable LifecycleOwner lifecycleOwner, String relativeUrl, @Nullable Object body, HttpCallback<T> httpCallback
     ) {
         Observable<Response<ResponseBody>> observable;
-        if (getBaseUrl() == null)
-            return;
-        url = getUrl(url, null);
+
         if (body == null) {
-            observable = ((Service) getService(Service.class)).post(getHeaders(), url);
+            observable = ((Service) getService(Service.class)).post(getHeaders(), relativeUrl);
         } else {
-            observable = ((Service) getService(Service.class)).post(getHeaders(), url, body);
+            observable = ((Service) getService(Service.class)).post(getHeaders(), relativeUrl, body);
         }
-        observable.flatMap(flatmap(lifecycleOwner)).map(map(httpCallback)).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe((Observer) httpCallback);
+        observable.
+                flatMap(flatmap(lifecycleOwner))
+                .map(map(httpCallback.getResultType())).
+                subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread()).
+                subscribe((Observer) httpCallback);
     }
 
 
-    public <T> void get(@Nullable LifecycleOwner lifecycleOwner, String url, HttpCallback<T> httpCallback) {
-        get(lifecycleOwner, url, null, httpCallback);
+    public <T> void get(@Nullable LifecycleOwner lifecycleOwner, String relativeUrl, HttpCallback<T> httpCallback) {
+        get(lifecycleOwner, relativeUrl, null, httpCallback);
     }
 
-    public <T> void get(@Nullable LifecycleOwner lifecycleOwner, String url, @Nullable String[] params, HttpCallback<T> httpCallback) {
+    public <T> void get(@Nullable LifecycleOwner lifecycleOwner, String relativeUrl, @Nullable String[] params, HttpCallback<T> httpCallback) {
 
-        url = getUrl(url, params);
-        ((Service) getService(Service.class)).get(getHeaders(), url).flatMap(flatmap(lifecycleOwner)).map(map(httpCallback)).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe((Observer) httpCallback);
+        String url = getUrl(getBaseUrl(), relativeUrl, array2Map(params));
+        ((Service) getService(Service.class)).get(getHeaders(), url).
+                flatMap(flatmap(lifecycleOwner)).
+                map(map(httpCallback.getResultType())).
+                subscribeOn(Schedulers.io()).
+                observeOn(AndroidSchedulers.mainThread()).
+                subscribe((Observer) httpCallback);
     }
 
-    public <T> void get(String url, HttpCallback<T> httpCallback) {
-        get(null, url, null, httpCallback);
+    public <T> void get(String relativeUrl, HttpCallback<T> httpCallback) {
+        get(null, relativeUrl, null, httpCallback);
     }
 
-    public <T> void get(String url, @Nullable String[] params, HttpCallback<T> httpCallback) {
-        get(null, url, null, httpCallback);
+    public <T> void get(String relativeUrl, @Nullable String[] params, HttpCallback<T> httpCallback) {
+        get(null, relativeUrl, params, httpCallback);
     }
 
 
     public static interface Service {
         @RawString
         @GET
-        Observable<Response<ResponseBody>> get(@HeaderMap Map<String, String> params, @Url String url);
+        Observable<Response<ResponseBody>> get(@HeaderMap Map<String, String> headers, @Url String url);
 
         @RawString
         @Multipart
         @POST
-        Observable<Response<ResponseBody>> multipartPost(@HeaderMap Map<String, String> params, @Url String url, @Part List<MultipartBody.Part> partList);
+        Observable<Response<ResponseBody>> multipartPost(@HeaderMap Map<String, String> headers, @Url String url, @Part List<MultipartBody.Part> partList);
 
         @RawString
         @POST
-        Observable<Response<ResponseBody>> post(@HeaderMap Map<String, String> params, @Url String url);
+        Observable<Response<ResponseBody>> post(@HeaderMap Map<String, String> headers, @Url String url);
 
         @RawString
         @POST
-        Observable<Response<ResponseBody>> post(@HeaderMap Map<String, String> params, @Url String url, @Body Object body);
+        Observable<Response<ResponseBody>> post(@HeaderMap Map<String, String> headers, @Url String url, @Body Object body);
 
         @POST
         @RawString
-        Observable<Response<ResponseBody>> upload(@HeaderMap Map<String, String> params, @Url String url, @Body MultipartBody multipartBody);
+        Observable<Response<ResponseBody>> upload(@HeaderMap Map<String, String> headers, @Url String url, @Body MultipartBody multipartBody);
+    }
+
+
+    public IRequest<Object> get(String relativeUrl) {
+        return new HttpRequest<Object>().from(this, HttpRequest.HttpMethod.GET).relativeUrl(relativeUrl);
+    }
+
+    public IRequest<Object> post(String relativeUrl) {
+        return new HttpRequest<Object>().from(this, HttpRequest.HttpMethod.POST).relativeUrl(relativeUrl);
+    }
+
+    public IRequest<Object> postForm(String relativeUrl) {
+        return new HttpRequest<Object>().from(this, HttpRequest.HttpMethod.POSTFORM).relativeUrl(relativeUrl);
     }
 }
 

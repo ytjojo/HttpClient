@@ -14,7 +14,7 @@ public class AtomicBoolTest {
     public void test() throws InterruptedException {
         CountDownLatch mCountDownLatch = new CountDownLatch(1);
         AtomicBoolean atomicBoolean = new AtomicBoolean(false);
-        new Thread(){
+        new Thread() {
             @Override
             public void run() {
                 super.run();
@@ -23,13 +23,13 @@ public class AtomicBoolTest {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                Assert.assertEquals(true,atomicBoolean.compareAndSet(false,true));
+                Assert.assertEquals(true, atomicBoolean.compareAndSet(false, true));
                 mCountDownLatch.countDown();
             }
         }.start();
         mCountDownLatch.await();
-        Assert.assertEquals(true,atomicBoolean.compareAndSet(true,false));
-        Assert.assertEquals(false,atomicBoolean.get());
+        Assert.assertEquals(true, atomicBoolean.compareAndSet(true, false));
+        Assert.assertEquals(false, atomicBoolean.get());
 
 
     }

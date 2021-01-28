@@ -9,7 +9,7 @@ import retrofit2.Retrofit;
  */
 public class MockRetrofitTest {
     @Test
-    public void testMockRetrofit(){
+    public void testMockRetrofit() {
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("http://www.baidu.com")
                 .build();

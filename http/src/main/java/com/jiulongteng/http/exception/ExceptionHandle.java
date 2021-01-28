@@ -30,8 +30,8 @@ public class ExceptionHandle {
      * @param e
      * @return
      */
-    public static ResponeThrowable handleException(Throwable e) {
-        ResponeThrowable ex;
+    public static ResponseThrowable handleException(Throwable e) {
+        ResponseThrowable ex;
         Log.i("rxjava-http-error", "e toStr==>" + e.toString());
         if (e instanceof HttpException) {
             HttpException httpException = (HttpException) e;
@@ -40,7 +40,7 @@ public class ExceptionHandle {
                 case UNAUTHORIZED:
                 case FORBIDDEN:
                 case REQUEST_CONFLICT:
-                    ex = new ResponeThrowable("登录信息已经过期，请重新登录", e, ERROR.TOKEN_ERROR);
+                    ex = new ResponseThrowable("登录信息已经过期，请重新登录", e, ERROR.TOKEN_ERROR);
                     break;
                 case NOT_FOUND:
                 case REQUEST_TIMEOUT:
@@ -49,43 +49,46 @@ public class ExceptionHandle {
                 case BAD_GATEWAY:
                 case SERVICE_UNAVAILABLE:
                 default:
-                    ex = new ResponeThrowable("您的网络开小差啦", e, ERROR.HTTP_ERROR);
+                    ex = new ResponseThrowable("您的网络开小差啦", e, ERROR.HTTP_ERROR);
                     //ex.code = httpException.code();
                     break;
             }
             return ex;
         } else if (e instanceof APIException) {
-            ex = new ResponeThrowable(e.getMessage(), e, ((APIException) e).code);
+            ex = new ResponseThrowable(e.getMessage(), e, ((APIException) e).code);
             return ex;
         } else if (e instanceof ConnectException ||
                 e instanceof SocketTimeoutException ||
                 e instanceof TimeoutException ||
                 e instanceof UnknownHostException ||
                 e instanceof EOFException) {
-            ex = new ResponeThrowable("无法连接到网络，请确认网络连接",
+            ex = new ResponseThrowable("无法连接到网络，请确认网络连接",
                     e, ERROR.NETWORK_ERROR);
             return ex;
         } else if (e instanceof javax.net.ssl.SSLHandshakeException) {
-            ex = new ResponeThrowable("证书验证失败", e, ERROR.SSL_ERROR);
+            ex = new ResponseThrowable("证书验证失败", e, ERROR.SSL_ERROR);
             return ex;
 
         } else if (e instanceof TokenInvalidException) {
             // ex = new ResponeThrowable("登录信息已经过期，请重新登陆...", e.getCause(), ERROR.TOKEN_ERROR);
             // 40400 不显示toast
-            ex = new ResponeThrowable("", e.getCause(), ERROR.TOKEN_ERROR);
+            ex = new ResponseThrowable("", e.getCause(), ERROR.TOKEN_ERROR);
             return ex;
+        } else if( e instanceof NullPointerException){
 
+            ex = new ResponseThrowable("数据为空，请检查服务器是否正常", e.getCause(), ERROR.NULL_DATA);
+            return ex;
         } else if (e instanceof AuthException) {
-            ex = new ResponeThrowable("登录信息已经过期，请重新登录", e.getCause(), ERROR.AUTH_ERROR);
+            ex = new ResponseThrowable("登录信息已经过期，请重新登录", e.getCause(), ERROR.AUTH_ERROR);
             return ex;
         } else {
             String className = e.getClass().getName().toLowerCase();
             if (className.contains("json")) {
-                ex = new ResponeThrowable("不好意思，解析数据出错", e, ERROR.PARSE_ERROR);
+                ex = new ResponseThrowable("不好意思，解析数据出错", e, ERROR.PARSE_ERROR);
                 return ex;
             }
 
-            ex = new ResponeThrowable("无法连接到服务器", e.getCause() == null
+            ex = new ResponseThrowable("未知异常", e.getCause() == null
                     ? e : e.getCause(), ERROR.UNKNOWN);
             return ex;
         }
@@ -109,11 +112,6 @@ public class ExceptionHandle {
          */
         public static final int NETWORK_ERROR = 1002;
 
-        /**
-         * 提交数据时候,出现断网或网络不给力,
-         * 需额外使用单独的文案
-         */
-        public static final int NETWORK_ERROR_IN_SEND_DATA = 100201;
 
         /**
          * 协议出错
@@ -132,18 +130,36 @@ public class ExceptionHandle {
          * 登陆出错
          */
         public static final int AUTH_ERROR = 1007;
+
+        public static final int NULL_DATA = 1008;
+
     }
 
     /**
      * ResponeThrowable
      */
-    public static class ResponeThrowable extends RuntimeException {
+    public static class ResponseThrowable extends RuntimeException implements IResponseException{
         public int code;
 
-        public ResponeThrowable(String message, Throwable throwable, int code) {
+        public ResponseThrowable(String message, Throwable throwable, int code) {
             super(message, throwable);
             this.code = code;
         }
+
+        @Override
+        public int getCode() {
+            return code;
+        }
+
+        @Override
+        public Throwable getRawThrowable() {
+            return getCause();
+        }
+    }
+
+    public interface IResponseException{
+        int getCode();
+        Throwable getRawThrowable();
     }
 
 
