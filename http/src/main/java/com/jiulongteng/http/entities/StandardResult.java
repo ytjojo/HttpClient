@@ -7,7 +7,7 @@ import okhttp3.Headers;
 
 public class StandardResult<T> implements IResult<T> {
     @SerializedName(alternate = {"status"}, value = "code")
-    public int code = Integer.MIN_VALUE;
+    public int code = 0;
 
     @SerializedName(alternate = {"body", "result"}, value = "data")
     public T data;

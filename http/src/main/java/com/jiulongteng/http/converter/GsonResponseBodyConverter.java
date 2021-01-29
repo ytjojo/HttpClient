@@ -6,10 +6,10 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.TypeAdapter;
 import com.google.gson.internal.$Gson$Types;
-import com.google.gson.reflect.TypeToken;
 import com.jiulongteng.http.entities.IResult;
 import com.jiulongteng.http.entities.StandardResult;
 import com.jiulongteng.http.exception.APIException;
+import com.jiulongteng.http.exception.ExceptionHandle;
 import com.jiulongteng.http.exception.JsonException;
 import com.jiulongteng.http.exception.TokenInvalidException;
 
@@ -25,7 +25,7 @@ import retrofit2.Converter;
 
 ;
 
-final class GsonResponseBodyConverter<T> implements Converter<ResponseBody, T> {
+final public class GsonResponseBodyConverter<T> implements Converter<ResponseBody, T> {
 
     private TypeAdapter<T> adapter;
 
@@ -33,11 +33,15 @@ final class GsonResponseBodyConverter<T> implements Converter<ResponseBody, T> {
 
     private final Type type;
 
+    private Class<? extends IResult> boundaryResultClass = StandardResult.class;
     GsonResponseBodyConverter(Gson paramGson, Type paramType) {
         this.mGson = paramGson;
         this.type = paramType;
     }
 
+    public void setBoundaryResultClass(Class<? extends IResult> boundaryResultClass){
+        this.boundaryResultClass = boundaryResultClass;
+    }
     @Override
     public T convert(ResponseBody responseBody) throws IOException {
         BufferedSource bufferedSource = Okio.buffer((Source) responseBody.source());
@@ -45,16 +49,16 @@ final class GsonResponseBodyConverter<T> implements Converter<ResponseBody, T> {
         bufferedSource.close();
         if (!TextUtils.isEmpty(responseStingBody))
             try {
-                StandardResult<JsonElement> standardResult = this.mGson.fromJson(responseStingBody, new TypeToken<StandardResult<JsonElement>>() {
-                }.getType());
-
-                String message = standardResult.getMessage();
-
-                if (!standardResult.isInvalidToken()) {
-                    if (standardResult.isSuccessful()) {
+                if(boundaryResultClass == null){
+                    return (T) this.mGson.fromJson(responseStingBody, this.type);
+                }
+                IResult<JsonElement> entireResult = this.mGson.fromJson(responseStingBody,  $Gson$Types.newParameterizedTypeWithOwner(null, boundaryResultClass, new Type[]{this.type}));
+                String message = entireResult.getMessage();
+                if (!entireResult.isInvalidToken()) {
+                    if (entireResult.isSuccessful()) {
                         if (this.type instanceof Class) {
                             if (this.type == String.class) {
-                                JsonElement jsonElement = standardResult.data;
+                                JsonElement jsonElement = entireResult.getData();
                                 return (T) jsonElement.getAsString();
                             }
                             if (this.type == Object.class) {
@@ -73,10 +77,10 @@ final class GsonResponseBodyConverter<T> implements Converter<ResponseBody, T> {
                         if (this.type instanceof ParameterizedType && IResult.class.isAssignableFrom((Class) ((ParameterizedType) this.type).getRawType())) {
                             return (T) this.mGson.fromJson(responseStingBody, this.type);
                         }
-                        ParameterizedType parameterizedType = $Gson$Types.newParameterizedTypeWithOwner(null, StandardResult.class, new Type[]{this.type});
-                        return (T) ((StandardResult) this.mGson.fromJson(responseStingBody, parameterizedType)).data;
+                        ParameterizedType parameterizedType = $Gson$Types.newParameterizedTypeWithOwner(null, boundaryResultClass, new Type[]{this.type});
+                        return (T) ((IResult) this.mGson.fromJson(responseStingBody, parameterizedType)).getData();
                     } else {
-                        APIException apiException = new APIException(standardResult.getCode(), message);
+                        APIException apiException = new APIException(entireResult.getCode(), message);
                         throw apiException;
                     }
 
@@ -92,6 +96,6 @@ final class GsonResponseBodyConverter<T> implements Converter<ResponseBody, T> {
             } catch (Exception exception) {
                 throw new JsonException("json解析失败", exception);
             }
-        throw new APIException(-3, "response is null");
+        throw new NullPointerException("response is null");
     }
 }

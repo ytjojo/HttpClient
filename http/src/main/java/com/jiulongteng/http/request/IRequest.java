@@ -22,13 +22,17 @@ import retrofit2.Retrofit;
 public interface IRequest<T>{
 
     IRequest<T> from(AbstractClient client, HttpRequest.HttpMethod method);
-    <T> IRequest<T> asType(TypeToken<T> typeToken);
+    <U> IRequest<U> asType(TypeToken<U> typeToken);
     HttpRequest<IResult<T>> asResult();
     IRequest<T> setSync();
     IRequest<T> relativeUrl(String relativeUrl);
-    IRequest<T> add(String key,String value);
+
+    IRequest<T> formatUrlParams(Object... params);
+
+    IRequest<T> add(String key, String value);
     IRequest<T> add(String key,Object value);
     IRequest<T> add(Object body);
+    IRequest<T> setBoundaryResultClass(Class<? extends IResult> boundaryResultClass);
     IRequest<T> baseUrl(String baseUrl);
     IRequest<T> addCallAdapterFactory(CallAdapter.Factory factory);
 

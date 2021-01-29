@@ -2,6 +2,7 @@ package com.jiulongteng.http.request;
 
 import androidx.lifecycle.LifecycleOwner;
 
+import com.google.gson.JsonElement;
 import com.google.gson.internal.$Gson$Types;
 import com.google.gson.reflect.TypeToken;
 import com.jiulongteng.http.client.AbstractClient;
@@ -19,9 +20,13 @@ import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.X509TrustManager;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.core.Notification;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.ObservableSource;
 import io.reactivex.rxjava3.core.Observer;
+import io.reactivex.rxjava3.disposables.Disposable;
+import io.reactivex.rxjava3.functions.Action;
+import io.reactivex.rxjava3.functions.Consumer;
 import io.reactivex.rxjava3.functions.Function;
 import io.reactivex.rxjava3.functions.Predicate;
 import io.reactivex.rxjava3.schedulers.Schedulers;
@@ -64,22 +69,21 @@ public class HttpRequest<T> implements IRequest<T> {
     long retryInterval;
     private Predicate<Throwable> retryPredicate;
 
+    private Class<? extends IResult> boundaryResultClass;
+
     @Override
     public IRequest<T> from(AbstractClient abstractClient, HttpMethod method) {
         this.httpClient = abstractClient;
         this.okHttpClient = abstractClient.getOkHttpClient();
         this.retrofit = abstractClient.getRetrofit();
+        this.boundaryResultClass = abstractClient.getBoundaryResultClass();
         return this;
     }
 
     @Override
-    public <T> IRequest<T> asType(TypeToken<T> typeToken) {
+    public <U> IRequest<U> asType(TypeToken<U> typeToken) {
         responseType = typeToken.getType();
-        Class rawType = $Gson$Types.getRawType(responseType);
-        if (IResult.class.isAssignableFrom(rawType)) {
-            isObservableMapped = true;
-        }
-        return (IRequest<T>) this;
+        return (IRequest<U>) this;
     }
 
     @Override
@@ -95,12 +99,18 @@ public class HttpRequest<T> implements IRequest<T> {
     }
 
     @Override
+    public IRequest<T> formatUrlParams(Object ... params) {
+        this.relativeUrl = String.format(relativeUrl, params);
+        return this;
+    }
+
+    @Override
     public IRequest<T> add(String key, String value) {
         if (params == null) {
             params = new HashMap<>();
         }
         params.put(key, value);
-        return null;
+        return this;
     }
 
     @Override
@@ -109,19 +119,25 @@ public class HttpRequest<T> implements IRequest<T> {
             postParams = new HashMap<>();
         }
         postParams.put(key, value);
-        return null;
+        return this;
     }
 
     @Override
     public IRequest<T> add(Object body) {
         this.postBody = body;
-        return null;
+        return this;
+    }
+
+    @Override
+    public IRequest<T> setBoundaryResultClass(Class<? extends IResult> boundaryResultClass) {
+        this.boundaryResultClass = boundaryResultClass;
+        return this;
     }
 
     @Override
     public IRequest<T> baseUrl(String baseUrl) {
         retrofit = retrofit.newBuilder().baseUrl(baseUrl).build();
-        return null;
+        return this;
     }
 
     @Override
@@ -238,18 +254,6 @@ public class HttpRequest<T> implements IRequest<T> {
     @Override
     public Observable<T> toObservable() {
         createObservable();
-        if (!isObservableMapped) {
-            isObservableMapped = true;
-            return observable = observable.flatMap(new Function<IResult<T>, ObservableSource<T>>() {
-                @Override
-                public ObservableSource<T> apply(IResult<T> tiResult) throws Throwable {
-                    if (responseType == Object.class) {
-                        return (ObservableSource<T>) Observable.just(new Object());
-                    }
-                    return Observable.just(tiResult.getData());
-                }
-            });
-        }
         transformObservable();
         return observable;
 
@@ -265,7 +269,7 @@ public class HttpRequest<T> implements IRequest<T> {
                 observable = getService(AbstractClient.Service.class).
                         get(getMergedHeaders(), AbstractClient.getUrl(
                                 retrofit.baseUrl().toString(), relativeUrl, params))
-                        .map(httpClient.map(responseType));
+                        .map(httpClient.map(responseType, boundaryResultClass));
 
 
                 break;
@@ -286,7 +290,7 @@ public class HttpRequest<T> implements IRequest<T> {
                         observableResponse = getService(AbstractClient.Service.class).post(getMergedHeaders(), relativeUrl, postParams);
                     }
                 }
-                observable = observableResponse.map(httpClient.map(responseType));
+                observable = observableResponse.map(httpClient.map(responseType, boundaryResultClass));
 
 
                 break;
@@ -321,9 +325,21 @@ public class HttpRequest<T> implements IRequest<T> {
     }
 
     public void transformObservable() {
+
+
         if (!isObservableMapped) {
-            observable = toObservable();
+            isObservableMapped = true;
+            observable = observable.flatMap(new Function<IResult<T>, ObservableSource<T>>() {
+                @Override
+                public ObservableSource<T> apply(IResult<T> tiResult) throws Throwable {
+                    if (responseType == Object.class) {
+                        return (ObservableSource<T>) Observable.just(new Object());
+                    }
+                    return Observable.just(tiResult.getData());
+                }
+            });
         }
+
         if (observeTimeout > 0) {
             observable = observable.timeout(observeTimeout, observeTimeUnit);
         }
@@ -345,7 +361,12 @@ public class HttpRequest<T> implements IRequest<T> {
                                     return Observable.error(ExceptionHandle.handleException(throwable));
                                 }
                             } else {
-                                return Observable.timer(retryInterval, TimeUnit.MILLISECONDS);
+                                if (retryInterval > 0) {
+                                    return Observable.timer(retryInterval, TimeUnit.MILLISECONDS);
+                                } else {
+                                    return Observable.just("");
+                                }
+
                             }
 
                         }
@@ -354,6 +375,7 @@ public class HttpRequest<T> implements IRequest<T> {
                 });
             }
         });
+
     }
 
     private void createRetrofit() {

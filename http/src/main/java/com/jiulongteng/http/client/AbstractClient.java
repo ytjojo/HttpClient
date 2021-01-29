@@ -7,12 +7,15 @@ import androidx.lifecycle.LifecycleOwner;
 import com.jiulongteng.http.annotation.RawString;
 import com.jiulongteng.http.callback.HttpCallback;
 import com.jiulongteng.http.converter.GsonConverterFactory;
+import com.jiulongteng.http.converter.GsonResponseBodyConverter;
+import com.jiulongteng.http.entities.IResult;
 import com.jiulongteng.http.entities.StandardResult;
 import com.jiulongteng.http.https.UnSafeHostnameVerifier;
 import com.jiulongteng.http.interceptor.HttpLoggingInterceptor;
 import com.jiulongteng.http.interceptor.InvocationLogger;
 import com.jiulongteng.http.request.HttpRequest;
 import com.jiulongteng.http.request.IRequest;
+import com.jiulongteng.http.util.TypeUtil;
 import com.trello.lifecycle4.android.lifecycle.AndroidLifecycle;
 
 import java.io.File;
@@ -64,6 +67,8 @@ public abstract class AbstractClient {
 
     private Object tag;
     String mBaseUrl;
+
+    private Class<? extends IResult> boundaryResultClass = StandardResult.class;
 
     public AbstractClient() {
 
@@ -143,8 +148,8 @@ public abstract class AbstractClient {
 
         if (isShowLog() && iHttpClientFactory.isShowLog()) {
             HttpLoggingInterceptor httpLoggingInterceptor = new HttpLoggingInterceptor(new HttpLoggingInterceptor.Logger() {
-                public void log(String param1String) {
-
+                public void log(String log) {
+                    System.out.println(log);
                 }
             });
             httpLoggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
@@ -158,7 +163,7 @@ public abstract class AbstractClient {
             builder.sslSocketFactory(sslSocketFactory, trustManager);
         }
         builder.hostnameVerifier(getHostnameVerifier());
-        if (getHttpCache() != null) {
+        if (iHttpClientFactory.getHttpCacheParent() != null) {
             Cache cache = new Cache(getHttpCache(), getMaxCacheSize());
             builder.cache(cache);
         }
@@ -166,6 +171,14 @@ public abstract class AbstractClient {
         OkHttpClient okHttpClient = builder.build();
         this.okHttpClient = okHttpClient;
         return okHttpClient;
+    }
+
+    public Class<? extends IResult> getBoundaryResultClass() {
+        return boundaryResultClass;
+    }
+
+    public void setBoundaryResultClass(Class<? extends IResult> boundaryResultClass) {
+        this.boundaryResultClass = boundaryResultClass;
     }
 
     public OkHttpClient getOkHttpClient() {
@@ -178,11 +191,11 @@ public abstract class AbstractClient {
 
 
     protected boolean isShowLog() {
-        return false;
+        return true;
     }
 
     public File getHttpCache() {
-        return new File(getHttpClientFactory().getContext().getCacheDir(), "http");
+        return new File(getHttpClientFactory().getHttpCacheParent(), "http");
     }
 
     public long getMaxCacheSize() {
@@ -235,7 +248,7 @@ public abstract class AbstractClient {
     }
 
     public static String getUrl(String baseUrl, String relativeUrl, HashMap<String, String> params) {
-        HttpUrl.Builder uriBuilder = baseUrl == null || relativeUrl.startsWith("http://") || relativeUrl.startsWith("https://") ? HttpUrl.get(relativeUrl).newBuilder() : HttpUrl.get(baseUrl).newBuilder();
+        HttpUrl.Builder uriBuilder = baseUrl == null || relativeUrl.startsWith("http://") || relativeUrl.startsWith("https://") ? HttpUrl.get(relativeUrl).newBuilder() : HttpUrl.get(baseUrl).newBuilder(relativeUrl);
 
         if (params == null || params.size() == 0) {
             return uriBuilder.build().toString();
@@ -252,13 +265,23 @@ public abstract class AbstractClient {
         this.tag = tag;
     }
 
-    public <T> Function<Response<ResponseBody>, StandardResult<T>> map(Type type) {
-        return new Function<Response<ResponseBody>, StandardResult<T>>() {
-            public StandardResult<T> apply(Response<ResponseBody> rawResponse) throws Throwable {
-                T data = (T) getRetrofit().responseBodyConverter(type, new Annotation[0]).convert(rawResponse.body());
+    public <T> Function<Response<ResponseBody>, IResult<T>> map(Type type, Class<? extends IResult> resultBoundary) {
+        return new Function<Response<ResponseBody>, IResult<T>>() {
+            public IResult<T> apply(Response<ResponseBody> rawResponse) throws Throwable {
+
+                Converter<ResponseBody, T> convert = getRetrofit().responseBodyConverter(type, new Annotation[0]);
+                if (convert instanceof GsonResponseBodyConverter) {
+                    GsonResponseBodyConverter gsonConverter = (GsonResponseBodyConverter) convert;
+                    gsonConverter.setBoundaryResultClass(resultBoundary);
+                }
+                T data = (T) convert.convert(rawResponse.body());
+                if (TypeUtil.isAssignableFrom(resultBoundary, type)) {
+                    ((IResult) data).setHeaders(rawResponse.headers());
+                    return (IResult) data;
+                }
                 StandardResult<T> standardResult = new StandardResult();
                 standardResult.data = data;
-                standardResult.setHeaders( rawResponse.headers());
+                standardResult.setHeaders(rawResponse.headers());
                 standardResult.code = 0;
                 return standardResult;
             }
@@ -276,7 +299,7 @@ public abstract class AbstractClient {
         }
         observable.
                 flatMap(flatmap(lifecycleOwner))
-                .map(map(httpCallback.getResultType())).
+                .map(map(httpCallback.getResultType(), getBoundaryResultClass())).
                 subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread()).
                 subscribe((Observer) httpCallback);
@@ -292,7 +315,7 @@ public abstract class AbstractClient {
         String url = getUrl(getBaseUrl(), relativeUrl, array2Map(params));
         ((Service) getService(Service.class)).get(getHeaders(), url).
                 flatMap(flatmap(lifecycleOwner)).
-                map(map(httpCallback.getResultType())).
+                map(map(httpCallback.getResultType(), getBoundaryResultClass())).
                 subscribeOn(Schedulers.io()).
                 observeOn(AndroidSchedulers.mainThread()).
                 subscribe((Observer) httpCallback);

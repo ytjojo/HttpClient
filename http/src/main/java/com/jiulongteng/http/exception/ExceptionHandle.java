@@ -31,6 +31,9 @@ public class ExceptionHandle {
      * @return
      */
     public static ResponseThrowable handleException(Throwable e) {
+        if(e instanceof ResponseThrowable){
+            return (ResponseThrowable) e;
+        }
         ResponseThrowable ex;
         Log.i("rxjava-http-error", "e toStr==>" + e.toString());
         if (e instanceof HttpException) {

@@ -2,6 +2,8 @@ package com.jiulongteng.http.client;
 
 import android.content.Context;
 
+import java.io.File;
+
 import okhttp3.OkHttpClient;
 
 public interface IHttpClientFactory {
@@ -19,8 +21,7 @@ public interface IHttpClientFactory {
 
   boolean isShowLog();
 
-  Context getContext();
-
+  File getHttpCacheParent();
   AbstractClient getDefaultClient();
 
 }

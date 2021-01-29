@@ -12,12 +12,14 @@ import okhttp3.OkHttpClient;
 public abstract class AbstractHttpClientFactory implements IHttpClientFactory {
     OkHttpClient baseOkHttpClient;
 
-    private boolean isShowLog;
+    private boolean isShowLog = true;
     ConcurrentHashMap<Object, AbstractClient> clientsByTag = new ConcurrentHashMap<Object, AbstractClient>();
 
     ConcurrentHashMap<String, AbstractClient> clientsByUrl = new ConcurrentHashMap<String, AbstractClient>();
 
     private static Context sContext;
+
+    AbstractClient defaultClient;
 
     public AbstractClient createByTag(Object tag) {
         if (httpClientBuilder != null) {
@@ -30,7 +32,6 @@ public abstract class AbstractHttpClientFactory implements IHttpClientFactory {
         sContext = context.getApplicationContext();
     }
 
-    @Override
     public Context getContext() {
         if (sContext == null) {
             sContext = ContextProvider.getContext();
@@ -48,6 +49,7 @@ public abstract class AbstractHttpClientFactory implements IHttpClientFactory {
         return new HttpClient(baseUrl);
     }
 
+    @Override
     public OkHttpClient getBaseOkHttpClient() {
         if (this.baseOkHttpClient == null) {
             OkHttpClient.Builder builder = (new OkHttpClient()).newBuilder()
@@ -106,7 +108,11 @@ public abstract class AbstractHttpClientFactory implements IHttpClientFactory {
     @Override
     public AbstractClient getDefaultClient() {
         if (httpClientBuilder != null) {
-            httpClientBuilder.getDefaultClient();
+           defaultClient = httpClientBuilder.getDefaultClient();
+           if(defaultClient != null){
+               defaultClient.attachToFactory(this);
+           }
+           return defaultClient;
         }
         return null;
     }

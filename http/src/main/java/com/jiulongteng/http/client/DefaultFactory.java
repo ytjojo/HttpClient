@@ -1,6 +1,7 @@
 package com.jiulongteng.http.client;
 
 
+import java.io.File;
 
 public class DefaultFactory extends AbstractHttpClientFactory {
     static volatile DefaultFactory sInstance;
@@ -18,5 +19,9 @@ public class DefaultFactory extends AbstractHttpClientFactory {
     }
 
 
+    @Override
+    public File getHttpCacheParent() {
+        return getContext().getCacheDir();
+    }
 }
   

@@ -14,8 +14,8 @@ import java.lang.reflect.Type;
 public abstract class HttpCallback<T> extends SimpleObserver<StandardResult<T>> {
     private Type type;
 
-    private Type getSuperclassTypeParameter(Class<?> paramClass) {
-        Type type = paramClass.getGenericSuperclass();
+    private Type getSuperclassTypeParameter(Class<?> clazz) {
+        Type type = clazz.getGenericSuperclass();
         if (!(type instanceof Class)) {
             return $Gson$Types.canonicalize(((ParameterizedType) type).getActualTypeArguments()[0]);
 
