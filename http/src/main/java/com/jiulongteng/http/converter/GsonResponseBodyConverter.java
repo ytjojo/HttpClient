@@ -52,14 +52,19 @@ final public class GsonResponseBodyConverter<T> implements Converter<ResponseBod
                 if(boundaryResultClass == null){
                     return (T) this.mGson.fromJson(responseStingBody, this.type);
                 }
-                IResult<JsonElement> entireResult = this.mGson.fromJson(responseStingBody,  $Gson$Types.newParameterizedTypeWithOwner(null, boundaryResultClass, new Type[]{this.type}));
+                IResult<JsonElement> entireResult = this.mGson.fromJson(responseStingBody,  $Gson$Types.newParameterizedTypeWithOwner(null, boundaryResultClass, new Type[]{JsonElement.class}));
                 String message = entireResult.getMessage();
                 if (!entireResult.isInvalidToken()) {
                     if (entireResult.isSuccessful()) {
                         if (this.type instanceof Class) {
                             if (this.type == String.class) {
                                 JsonElement jsonElement = entireResult.getData();
-                                return (T) jsonElement.getAsString();
+                                if(jsonElement.isJsonArray()){
+                                    return (T) jsonElement.toString();
+                                }else {
+                                    return (T) jsonElement.getAsString();
+                                }
+
                             }
                             if (this.type == Object.class) {
                                 return null;
