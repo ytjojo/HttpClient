@@ -2,6 +2,8 @@ package com.jiulongteng.http.client;
 
 import android.content.Context;
 
+import androidx.annotation.NonNull;
+
 import com.jiulongteng.http.util.ContextProvider;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -106,7 +108,11 @@ public abstract class AbstractHttpClientFactory implements IHttpClientFactory {
     }
 
     @Override
+    @NonNull
     public AbstractClient getDefaultClient() {
+        if(defaultClient != null){
+            return defaultClient;
+        }
         if (httpClientBuilder != null) {
            defaultClient = httpClientBuilder.getDefaultClient();
            if(defaultClient != null){
