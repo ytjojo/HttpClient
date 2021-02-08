@@ -4,6 +4,7 @@ import androidx.annotation.Nullable;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleOwner;
 
+import com.google.gson.internal.$Gson$Types;
 import com.jiulongteng.http.annotation.RawString;
 import com.jiulongteng.http.callback.HttpCallback;
 import com.jiulongteng.http.converter.GsonConverterFactory;
@@ -265,17 +266,22 @@ public abstract class AbstractClient {
         this.tag = tag;
     }
 
-    public <T> Function<Response<ResponseBody>, IResult<T>> map(Type type, Class<? extends IResult> resultBoundary) {
+    public static <T> Function<Response<ResponseBody>, IResult<T>> map(Retrofit retrofit, Type type, Class<? extends IResult> resultBoundary) {
         return new Function<Response<ResponseBody>, IResult<T>>() {
             public IResult<T> apply(Response<ResponseBody> rawResponse) throws Throwable {
+                Type fixType = type;
 
-                Converter<ResponseBody, T> convert = getRetrofit().responseBodyConverter(type, new Annotation[0]);
+                if (resultBoundary != null && !TypeUtil.isAssignableFrom(resultBoundary, type)) {
+                    fixType = $Gson$Types.newParameterizedTypeWithOwner(null, resultBoundary, new Type[]{type});
+                }
+
+                Converter<ResponseBody, T> convert = retrofit.responseBodyConverter(fixType, new Annotation[0]);
                 if (convert instanceof GsonResponseBodyConverter) {
                     GsonResponseBodyConverter gsonConverter = (GsonResponseBodyConverter) convert;
                     gsonConverter.setBoundaryResultClass(resultBoundary);
                 }
                 T data = (T) convert.convert(rawResponse.body());
-                if (TypeUtil.isAssignableFrom(resultBoundary, type)) {
+                if (resultBoundary != null && TypeUtil.isAssignableFrom(resultBoundary, type)) {
                     ((IResult) data).setHeaders(rawResponse.headers());
                     return (IResult) data;
                 }
@@ -299,7 +305,7 @@ public abstract class AbstractClient {
         }
         observable.
                 flatMap(flatmap(lifecycleOwner))
-                .map(map(httpCallback.getResultType(), getBoundaryResultClass())).
+                .map(map(getRetrofit(), httpCallback.getResultType(), getBoundaryResultClass())).
                 subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread()).
                 subscribe((Observer) httpCallback);
@@ -315,7 +321,7 @@ public abstract class AbstractClient {
         String url = getUrl(getBaseUrl(), relativeUrl, array2Map(params));
         ((Service) getService(Service.class)).get(getHeaders(), url).
                 flatMap(flatmap(lifecycleOwner)).
-                map(map(httpCallback.getResultType(), getBoundaryResultClass())).
+                map(map(getRetrofit(), httpCallback.getResultType(), getBoundaryResultClass())).
                 subscribeOn(Schedulers.io()).
                 observeOn(AndroidSchedulers.mainThread()).
                 subscribe((Observer) httpCallback);
