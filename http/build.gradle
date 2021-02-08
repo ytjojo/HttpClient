@@ -1,4 +1,6 @@
 apply plugin: 'com.android.library'
+//apply plugin: 'org.jetbrains.kotlin.jvm'
+apply plugin: 'kotlin-android'
 apply from: rootProject.file('gradle/gradle-mvn-push.gradle')
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
@@ -47,6 +49,10 @@ dependencies {
     api rootProject.ext.okhttp
     api rootProject.ext.adapter_rxjava3
     api rootProject.ext.retrofit
+
+    api rootProject.ext.kotlinStdlib
+    api rootProject.ext.kotlin_stdlib_jdk8
+    api rootProject.ext.kotlin_coroutines_android
 
 
 }

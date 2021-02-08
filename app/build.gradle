@@ -1,4 +1,6 @@
 apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+
 def isTravis = "true".equals(System.getenv("TRAVIS"))
 def packageTime() {
     return new Date().format("yyyy-MM-dd", TimeZone.getTimeZone("UTC"))
@@ -117,6 +119,17 @@ dependencies {
     api fileTree(dir: 'libs', include: ['*.jar'])
     api project(':http')
     testImplementation 'junit:junit:4.12'
+    api rootProject.ext.kotlinStdlib
+    api rootProject.ext.kotlin_stdlib_jdk8
+    testImplementation rootProject.ext.kotlinStdlib
+    testImplementation rootProject.ext.kotlin_stdlib_jdk8
+    testImplementation "org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version"
+
+    api fragmentktx
+    api lifecycle_runtime_ktx
+    api lifecycle_livedata_ktx
+    api ifecycle_viewmodel_ktx
+    api lifecycle_service
 
 
 }
