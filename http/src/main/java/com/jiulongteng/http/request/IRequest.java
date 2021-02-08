@@ -6,6 +6,8 @@ import com.google.gson.reflect.TypeToken;
 import com.jiulongteng.http.client.AbstractClient;
 import com.jiulongteng.http.entities.IResult;
 
+import java.lang.reflect.Type;
+import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.HostnameVerifier;
@@ -15,6 +17,7 @@ import javax.net.ssl.X509TrustManager;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Observer;
 import io.reactivex.rxjava3.functions.Predicate;
+import okhttp3.OkHttpClient;
 import retrofit2.CallAdapter;
 import retrofit2.Converter;
 import retrofit2.Retrofit;
@@ -23,6 +26,7 @@ public interface IRequest<T>{
 
     IRequest<T> from(AbstractClient client, HttpRequest.HttpMethod method);
     <U> IRequest<U> asType(TypeToken<U> typeToken);
+    <U> IRequest<U> asType(Type type);
     HttpRequest<IResult<T>> asResult();
     IRequest<T> setSync();
     IRequest<T> relativeUrl(String relativeUrl);
@@ -65,6 +69,23 @@ public interface IRequest<T>{
 
 
     Retrofit getRetrofit();
+
+    HashMap<String, String> getMergedHeaders();
+
+    OkHttpClient getOkHttpClient();
+
+    Class<? extends IResult> getBoundaryResultClass();
+
+    int getRetryCount();
+
+    long getRetryInterval();
+
+    Type getResponseType();
+
+    String getRelativeUrl();
+
+    Object getPostBody();
+    boolean isIResultResponse();
 
 
 

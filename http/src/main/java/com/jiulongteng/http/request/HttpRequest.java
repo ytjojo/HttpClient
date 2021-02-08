@@ -2,15 +2,20 @@ package com.jiulongteng.http.request;
 
 import androidx.lifecycle.LifecycleOwner;
 
-import com.google.gson.JsonElement;
 import com.google.gson.internal.$Gson$Types;
 import com.google.gson.reflect.TypeToken;
 import com.jiulongteng.http.client.AbstractClient;
 import com.jiulongteng.http.converter.GsonConverterFactory;
+import com.jiulongteng.http.converter.GsonResponseBodyConverter;
 import com.jiulongteng.http.entities.IResult;
+import com.jiulongteng.http.entities.StandardResult;
 import com.jiulongteng.http.exception.ExceptionHandle;
-import com.jiulongteng.http.util.CollectionUtils;
+import com.jiulongteng.http.util.LogUtil;
+import com.jiulongteng.http.util.TypeUtil;
 
+import java.io.IOException;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
@@ -20,13 +25,9 @@ import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.X509TrustManager;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
-import io.reactivex.rxjava3.core.Notification;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.ObservableSource;
 import io.reactivex.rxjava3.core.Observer;
-import io.reactivex.rxjava3.disposables.Disposable;
-import io.reactivex.rxjava3.functions.Action;
-import io.reactivex.rxjava3.functions.Consumer;
 import io.reactivex.rxjava3.functions.Function;
 import io.reactivex.rxjava3.functions.Predicate;
 import io.reactivex.rxjava3.schedulers.Schedulers;
@@ -62,7 +63,7 @@ public class HttpRequest<T> implements IRequest<T> {
 
     Observable observable;
 
-    boolean isObservableMapped;
+    boolean isIResultResponse;
 
     int retryCount;
     int currentRetryCount;
@@ -83,6 +84,18 @@ public class HttpRequest<T> implements IRequest<T> {
     @Override
     public <U> IRequest<U> asType(TypeToken<U> typeToken) {
         responseType = typeToken.getType();
+        if (this.responseType instanceof ParameterizedType && IResult.class.isAssignableFrom((Class) ((ParameterizedType) this.responseType).getRawType())) {
+            isIResultResponse = true;
+        }
+        return (IRequest<U>) this;
+    }
+
+    @Override
+    public <U> IRequest<U> asType(Type type) {
+        responseType = type;
+        if (this.responseType instanceof ParameterizedType && IResult.class.isAssignableFrom((Class) ((ParameterizedType) this.responseType).getRawType())) {
+            isIResultResponse = true;
+        }
         return (IRequest<U>) this;
     }
 
@@ -99,7 +112,7 @@ public class HttpRequest<T> implements IRequest<T> {
     }
 
     @Override
-    public IRequest<T> formatUrlParams(Object ... params) {
+    public IRequest<T> formatUrlParams(Object... params) {
         this.relativeUrl = String.format(relativeUrl, params);
         return this;
     }
@@ -241,6 +254,7 @@ public class HttpRequest<T> implements IRequest<T> {
         return (U) getRetrofit().create(serviceClass);
     }
 
+    @Override
     public HashMap<String, String> getMergedHeaders() {
         if (headers == null) {
             headers = new HashMap<>();
@@ -269,28 +283,20 @@ public class HttpRequest<T> implements IRequest<T> {
                 observable = getService(AbstractClient.Service.class).
                         get(getMergedHeaders(), AbstractClient.getUrl(
                                 retrofit.baseUrl().toString(), relativeUrl, params))
-                        .map(httpClient.map(responseType, boundaryResultClass));
+                        .map(httpClient.map(getRetrofit(), responseType, boundaryResultClass));
 
 
                 break;
             case POST:
                 Observable<Response<ResponseBody>> observableResponse = null;
-                if (postBody == null && CollectionUtils.isEmpty(params) && CollectionUtils.isEmpty(postParams)) {
+                Object bodyObject = getPostBody();
+                if (bodyObject == null) {
                     observableResponse = getService(AbstractClient.Service.class).post(getMergedHeaders(), relativeUrl);
                 } else {
-                    if (postBody != null) {
-                        observableResponse = getService(AbstractClient.Service.class).post(getMergedHeaders(), relativeUrl, postBody);
-                    } else {
-                        if (postParams == null) {
-                            postParams = new HashMap<>();
-                        }
-                        if (params != null) {
-                            postParams.putAll(params);
-                        }
-                        observableResponse = getService(AbstractClient.Service.class).post(getMergedHeaders(), relativeUrl, postParams);
-                    }
+                    observableResponse = getService(AbstractClient.Service.class).post(getMergedHeaders(), relativeUrl, bodyObject);
+
                 }
-                observable = observableResponse.map(httpClient.map(responseType, boundaryResultClass));
+                observable = observableResponse.map(httpClient.map(getRetrofit(), responseType, boundaryResultClass));
 
 
                 break;
@@ -312,7 +318,7 @@ public class HttpRequest<T> implements IRequest<T> {
 
     @Override
     public HttpRequest<IResult<T>> asResult() {
-        isObservableMapped = false;
+        isIResultResponse = true;
         return (HttpRequest<IResult<T>>) this;
     }
 
@@ -327,8 +333,7 @@ public class HttpRequest<T> implements IRequest<T> {
     public void transformObservable() {
 
 
-        if (!isObservableMapped) {
-            isObservableMapped = true;
+        if (!isIResultResponse) {
             observable = observable.flatMap(new Function<IResult<T>, ObservableSource<T>>() {
                 @Override
                 public ObservableSource<T> apply(IResult<T> tiResult) throws Throwable {
@@ -396,5 +401,80 @@ public class HttpRequest<T> implements IRequest<T> {
 
     public static enum HttpMethod {
         GET, POST, POSTFORM, DELETE, PUT
+    }
+
+    @Override
+    public OkHttpClient getOkHttpClient() {
+        return okHttpClient;
+    }
+
+    @Override
+    public Class<? extends IResult> getBoundaryResultClass() {
+        return boundaryResultClass;
+    }
+
+    @Override
+    public int getRetryCount() {
+        return retryCount;
+    }
+
+    @Override
+    public long getRetryInterval() {
+        return retryInterval;
+    }
+
+    @Override
+    public Type getResponseType() {
+        return responseType;
+    }
+
+    @Override
+    public String getRelativeUrl() {
+        return relativeUrl;
+    }
+
+    @Override
+    public Object getPostBody() {
+        if (postBody != null) {
+            return postBody;
+        }
+        if (params != null) {
+            if (postParams == null) {
+                postParams = new HashMap<>();
+            }
+            postParams.putAll(params);
+        }
+        postBody = postParams;
+        return postBody;
+    }
+
+    @Override
+    public boolean isIResultResponse() {
+        return isIResultResponse;
+    }
+
+    public static IResult convertToIResult(IRequest request, Response<ResponseBody> rawResponse) throws IOException {
+        LogUtil.logThread("convertToIResult");
+        Type fixType = request.getResponseType();
+
+        if (request.getBoundaryResultClass() != null && !TypeUtil.isAssignableFrom(request.getBoundaryResultClass(), request.getResponseType())) {
+            fixType = $Gson$Types.newParameterizedTypeWithOwner(null, request.getBoundaryResultClass(), new Type[]{request.getResponseType()});
+        }
+
+        Converter<ResponseBody, IResult> convert = request.getRetrofit().responseBodyConverter(fixType, new Annotation[0]);
+        if (convert instanceof GsonResponseBodyConverter) {
+            GsonResponseBodyConverter gsonConverter = (GsonResponseBodyConverter) convert;
+            gsonConverter.setBoundaryResultClass(request.getBoundaryResultClass());
+        }
+        Object data = convert.convert(rawResponse.body());
+        if (request.getBoundaryResultClass() != null && TypeUtil.isAssignableFrom(IResult.class, request.getBoundaryResultClass())) {
+            ((IResult) data).setHeaders(rawResponse.headers());
+            return (IResult) data;
+        }
+        StandardResult standardResult = new StandardResult();
+        standardResult.data = data;
+        standardResult.setHeaders(rawResponse.headers());
+        standardResult.code = 0;
+        return standardResult;
     }
 }
