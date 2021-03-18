@@ -10,6 +10,7 @@ import com.jiulongteng.http.converter.GsonResponseBodyConverter;
 import com.jiulongteng.http.entities.IResult;
 import com.jiulongteng.http.entities.StandardResult;
 import com.jiulongteng.http.exception.ExceptionHandle;
+import com.jiulongteng.http.util.CollectionUtils;
 import com.jiulongteng.http.util.LogUtil;
 import com.jiulongteng.http.util.TypeUtil;
 
@@ -17,7 +18,9 @@ import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.HostnameVerifier;
@@ -31,6 +34,7 @@ import io.reactivex.rxjava3.core.Observer;
 import io.reactivex.rxjava3.functions.Function;
 import io.reactivex.rxjava3.functions.Predicate;
 import io.reactivex.rxjava3.schedulers.Schedulers;
+import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
 import retrofit2.CallAdapter;
@@ -44,9 +48,9 @@ public class HttpRequest<T> implements IRequest<T> {
     AbstractClient httpClient;
     Retrofit retrofit;
     private boolean isSync;
-    HashMap<String, String> params;
+    HashMap<String, Object> params;
     HashMap<String, String> headers;
-    HashMap<String, Object> postParams;
+    ArrayList<MultipartBody.Part> multiparts;
     Object postBody;
     private HttpMethod httpMethod = HttpMethod.GET;
 
@@ -118,7 +122,7 @@ public class HttpRequest<T> implements IRequest<T> {
     }
 
     @Override
-    public IRequest<T> add(String key, String value) {
+    public IRequest<T> add(String key, Object value) {
         if (params == null) {
             params = new HashMap<>();
         }
@@ -126,18 +130,19 @@ public class HttpRequest<T> implements IRequest<T> {
         return this;
     }
 
+
     @Override
-    public IRequest<T> add(String key, Object value) {
-        if (postParams == null) {
-            postParams = new HashMap<>();
-        }
-        postParams.put(key, value);
+    public IRequest<T> setBody(Object body) {
+        this.postBody = body;
         return this;
     }
 
     @Override
-    public IRequest<T> add(Object body) {
-        this.postBody = body;
+    public IRequest<T> addMultipart(MultipartBody.Part part) {
+        if (multiparts == null) {
+            multiparts = new ArrayList<>();
+        }
+        multiparts.add(part);
         return this;
     }
 
@@ -280,9 +285,13 @@ public class HttpRequest<T> implements IRequest<T> {
         }
         switch (httpMethod) {
             case GET:
+                HashMap<String, String> querys = new HashMap<>();
+                for (Map.Entry<String, Object> entry : params.entrySet()) {
+                    querys.put(entry.getKey(), entry.getValue().toString());
+                }
                 observable = getService(AbstractClient.Service.class).
                         get(getMergedHeaders(), AbstractClient.getUrl(
-                                retrofit.baseUrl().toString(), relativeUrl, params))
+                                retrofit.baseUrl().toString(), relativeUrl, querys))
                         .map(httpClient.map(getRetrofit(), responseType, boundaryResultClass));
 
 
@@ -301,6 +310,16 @@ public class HttpRequest<T> implements IRequest<T> {
 
                 break;
             case POSTFORM:
+                if (!CollectionUtils.isEmpty(params)) {
+                    if (multiparts == null) {
+                        multiparts = new ArrayList<>();
+                    }
+                    for (Map.Entry<String, Object> entry : params.entrySet()) {
+                        MultipartBody.Part part = MultipartBody.Part.createFormData(entry.getKey(), entry.getValue().toString());
+                        multiparts.add(part);
+                    }
+                }
+                getService(AbstractClient.Service.class).multipartPost(getMergedHeaders(), relativeUrl, multiparts);
 
                 break;
             case DELETE:
@@ -439,12 +458,12 @@ public class HttpRequest<T> implements IRequest<T> {
             return postBody;
         }
         if (params != null) {
-            if (postParams == null) {
-                postParams = new HashMap<>();
+            if (params == null) {
+                params = new HashMap<>();
             }
-            postParams.putAll(params);
+            params.putAll(params);
         }
-        postBody = postParams;
+        postBody = params;
         return postBody;
     }
 

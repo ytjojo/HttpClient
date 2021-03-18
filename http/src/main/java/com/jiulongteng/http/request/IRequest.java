@@ -17,6 +17,7 @@ import javax.net.ssl.X509TrustManager;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Observer;
 import io.reactivex.rxjava3.functions.Predicate;
+import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import retrofit2.CallAdapter;
 import retrofit2.Converter;
@@ -33,9 +34,9 @@ public interface IRequest<T>{
 
     IRequest<T> formatUrlParams(Object... params);
 
-    IRequest<T> add(String key, String value);
     IRequest<T> add(String key,Object value);
-    IRequest<T> add(Object body);
+    IRequest<T> setBody(Object body);
+    IRequest<T> addMultipart(MultipartBody.Part part);
     IRequest<T> setBoundaryResultClass(Class<? extends IResult> boundaryResultClass);
     IRequest<T> baseUrl(String baseUrl);
     IRequest<T> addCallAdapterFactory(CallAdapter.Factory factory);

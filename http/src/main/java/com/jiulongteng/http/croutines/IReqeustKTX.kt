@@ -4,11 +4,16 @@ import com.jiulongteng.http.entities.IResult
 import com.jiulongteng.http.exception.ExceptionHandle
 import com.jiulongteng.http.request.HttpRequest
 import com.jiulongteng.http.request.IRequest
+import com.jiulongteng.http.rx.SimpleObserver
 import com.jiulongteng.http.util.LogUtil
+import io.reactivex.rxjava3.disposables.Disposable
 import kotlinx.coroutines.*
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
+import kotlin.coroutines.intrinsics.intercepted
+import kotlin.coroutines.intrinsics.suspendCoroutineUninterceptedOrReturn
 
 suspend fun <T> IRequest<T>.execute(): T {
     return try {
@@ -68,15 +73,34 @@ inline fun <reified T : Any> IRequest<Any>.toAwaitAsType(): IAwait<T> {
 fun <T> IRequest<T>.toAwait(): IAwait<T> = AwaitImpl<T>(this)
 
 
-suspend fun <T> suspendExecute(block: () -> T): T {
+suspend fun <T> IRequest<T>.rxAwait(): T {
+
     return suspendCancellableCoroutine { continuation ->
+        var disposable: Disposable? = null
+        continuation.invokeOnCancellation {
+            if (disposable != null && !disposable!!.isDisposed) {
+                disposable?.dispose()
+            }
+        }
         try {
-            continuation.resume(block.invoke())
+            subscribe(object : SimpleObserver<T>() {
+                override fun onSubscribe(d: Disposable) {
+                    super.onSubscribe(d)
+                    disposable = d
+                }
+
+                override fun onNext(t: T) {
+                    continuation.resume(t)
+                }
+
+                override fun onError(e: Throwable) {
+                    continuation.resumeWithException(e)
+                }
+            })
 
         } catch (t: Throwable) {
-
             continuation.resumeWithException(t)
         }
     }
-
 }
+

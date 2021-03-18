@@ -52,6 +52,7 @@ import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava3.RxJava3CallAdapterFactory;
 import retrofit2.http.Body;
 import retrofit2.http.GET;
+import retrofit2.http.HEAD;
 import retrofit2.http.HeaderMap;
 import retrofit2.http.Multipart;
 import retrofit2.http.POST;
@@ -357,6 +358,10 @@ public abstract class AbstractClient {
         @POST
         @RawString
         Observable<Response<ResponseBody>> upload(@HeaderMap Map<String, String> headers, @Url String url, @Body MultipartBody multipartBody);
+
+        @HEAD
+        @RawString
+        Observable<Response<ResponseBody>> getInstanceLength(@HeaderMap Map<String,String> headers,String url);
     }
 
 
