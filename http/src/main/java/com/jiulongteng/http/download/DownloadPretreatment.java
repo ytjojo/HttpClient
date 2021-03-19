@@ -36,12 +36,12 @@ public class DownloadPretreatment {
 
 
     public void execute() throws IOException{
-
         restore();
         if(task.isStoped()){
             task.dispatchCancel();
             return;
         }
+        task.getCallbackDispatcher().connectTrialStart(task);
         executeTrial();
         if(task.isStoped()){
             task.dispatchCancel();
@@ -58,10 +58,13 @@ public class DownloadPretreatment {
             boolean isCorrect = BreakpointInfo.isCorrect(task.getInfo(),task);
             boolean dirty = !isCorrect || !isExists;
             if(dirty){
-                if(task.getFile() != null && !task.getFile().delete()){
+                if(task.getFile() != null && task.getFile().exists() && !task.getFile().delete()){
                     throw new IOException("Delete file failed!");
                 }
                 Util.assembleBlock(task);
+                task.getCallbackDispatcher().fetchStart(task,true);
+            }else {
+                task.getCallbackDispatcher().fetchStart(task,false);
             }
 
         }else {
@@ -69,6 +72,14 @@ public class DownloadPretreatment {
                 throw new IOException("Delete file failed!");
             }
             Util.assembleBlock(task);
+            task.getCallbackDispatcher().fetchStart(task,true);
+        }
+
+        if (!task.getParentFile().exists()) {
+            task.getParentFile().mkdirs();
+        }
+        if (!task.getFile().exists()) {
+            task.getFile().createNewFile();
         }
     }
 
@@ -84,6 +95,7 @@ public class DownloadPretreatment {
             response = task.getClient().newCall(request).execute();
             Headers headers = response.headers();
             task.setResponseCode(response.code());
+            task.setResponseEtag(headers.get(Util.ETAG));
             task.getInfo().setChunked(isChunked());
             task.setAcceptRange(DownloadUtils.isAcceptRange(headers, response.code()));
             task.setInstanceLength(DownloadUtils.findInstanceLength(response.headers()));
@@ -104,12 +116,6 @@ public class DownloadPretreatment {
             String fileName = DownloadUtils.determineFilename(task.getResponseFilename(), task.getUrl());
             task.setFileName(fileName);
 
-        }
-        if (!task.getParentFile().exists()) {
-            task.getParentFile().mkdirs();
-        }
-        if (!task.getFile().exists()) {
-            task.getFile().createNewFile();
         }
 
         final ResumeFailedCause resumeFailedCause = getPreconditionFailedCause(task.getResponseCode(), task.getInfo().getTotalOffset() != 0, task.getInfo(),

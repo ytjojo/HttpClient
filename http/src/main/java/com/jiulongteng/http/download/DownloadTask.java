@@ -1,8 +1,12 @@
 package com.jiulongteng.http.download;
 
+import android.os.Handler;
+import android.os.Looper;
+
 import androidx.annotation.IntRange;
 import androidx.annotation.Nullable;
 
+import com.jiulongteng.http.download.dispatcher.CallbackDispatcher;
 import com.jiulongteng.http.download.entry.BlockInfo;
 import com.jiulongteng.http.download.entry.BreakpointInfo;
 
@@ -34,7 +38,8 @@ public class DownloadTask {
     Request rawRequest;
     String fileName;
     File parentFile;
-    @Nullable private String redirectLocation;
+    @Nullable
+    private String redirectLocation;
 
 
     private boolean acceptRange;
@@ -49,14 +54,19 @@ public class DownloadTask {
     private boolean isFilenameFromResponse;
     DownloadPretreatment pretreatment;
 
-    @Nullable private final Integer connectionCount;
+    @Nullable
+    private final Integer connectionCount;
     CopyOnWriteArrayList<AbstractDownloadRunnable> downloadRunnables;
 
     FlushRunnable flushRunnable;
 
     Runnable finishRunnable;
 
-    public DownloadTask(File file, OkHttpClient client, Request request,Integer connectionCount) {
+    DownloadListener downloadListener;
+    CallbackDispatcher callbackDispatcher;
+    boolean isSuccess;
+
+    public DownloadTask(File file, OkHttpClient client, Request request, Integer connectionCount) {
 
         if (file.isDirectory()) {
             this.parentFile = file;
@@ -74,36 +84,36 @@ public class DownloadTask {
     }
 
 
-
-
-    public void execute(){
-
+    public void execute() {
+        getCallbackDispatcher().taskStart(this);
         pretreatment = new DownloadPretreatment(this);
-        try{
+        try {
             pretreatment.execute();
-        }catch (Throwable e){
+        } catch (Throwable e) {
             //TODO dispatch error
             return;
         }
-        if(isStoped.get()){
+        if (isStoped.get()) {
             return;
         }
         ArrayList<AbstractDownloadRunnable> runnables = prepareSubTask();
         downloadRunnables = new CopyOnWriteArrayList<>();
         downloadRunnables.addAll(runnables);
-        flushRunnable = new FlushRunnable(this,finishRunnable);
+        flushRunnable = new FlushRunnable(this, finishRunnable);
         try {
             startSubTask(runnables);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+        isSuccess = true;
+        getCallbackDispatcher().taskEnd(this,null,null);
     }
 
-    public void setFinishRunnable(Runnable runnable){
+    public void setFinishRunnable(Runnable runnable) {
         this.finishRunnable = runnable;
     }
 
-    private ArrayList<AbstractDownloadRunnable> prepareSubTask(){
+    private ArrayList<AbstractDownloadRunnable> prepareSubTask() {
 
         final int blockCount = info.getBlockCount();
         ArrayList<AbstractDownloadRunnable> runnables = new ArrayList<>();
@@ -113,14 +123,15 @@ public class DownloadTask {
                 continue;
             }
             Util.resetBlockIfDirty(blockInfo);
-            runnables.add(new DownloadRunnable(this,blockInfo,i));
+            runnables.add(new DownloadRunnable(this, blockInfo, i));
         }
-       return runnables;
+        return runnables;
 
     }
+
     private void startSubTask(ArrayList<AbstractDownloadRunnable> runnables) throws InterruptedException {
         if (isStoped.get() || runnables.isEmpty()) {
-            return ;
+            return;
         }
         ArrayList<Future> futures = new ArrayList<>();
         try {
@@ -131,12 +142,13 @@ public class DownloadTask {
                 if (!future.isDone()) {
                     try {
                         future.get();
-                    } catch (CancellationException | ExecutionException ignore) { }
+                    } catch (CancellationException | ExecutionException ignore) {
+                    }
                 }
             }
         } catch (Throwable t) {
             for (Future future : futures) {
-                if(!future.isDone()){
+                if (!future.isDone()) {
                     future.cancel(true);
                 }
             }
@@ -165,7 +177,6 @@ public class DownloadTask {
     public File getFile() {
         return mFile;
     }
-
 
 
     public AtomicBoolean getIsStoped() {
@@ -206,7 +217,7 @@ public class DownloadTask {
 
     public void setFileName(String fileName) {
         this.fileName = fileName;
-        this.mFile = new File(parentFile,fileName);
+        this.mFile = new File(parentFile, fileName);
     }
 
     public void setParentFile(File parentFile) {
@@ -282,7 +293,7 @@ public class DownloadTask {
         return connectionCount;
     }
 
-    public boolean isStoped(){
+    public boolean isStoped() {
         return isStoped.get();
     }
 
@@ -290,8 +301,8 @@ public class DownloadTask {
 
     }
 
-    public int getRunnableSize(){
-        if(downloadRunnables == null){
+    public int getRunnableSize() {
+        if (downloadRunnables == null) {
             return 0;
         }
         return downloadRunnables.size();
@@ -299,5 +310,24 @@ public class DownloadTask {
 
     public FlushRunnable getFlushRunnable() {
         return flushRunnable;
+    }
+
+    public DownloadListener getDownloadListener() {
+        return downloadListener;
+    }
+
+    public void setDownloadListener(boolean uiThread, DownloadListener listener) {
+        this.downloadListener = listener;
+        callbackDispatcher = new CallbackDispatcher(uiThread ? new Handler(Looper.getMainLooper()) : null);
+    }
+    public void setDownloadListener( DownloadListener listener) {
+        setDownloadListener(true,listener);
+    }
+
+    public CallbackDispatcher getCallbackDispatcher() {
+        return callbackDispatcher;
+    }
+    public boolean isSuccess(){
+        return isSuccess;
     }
 }

@@ -90,7 +90,6 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
                 bytebuffer.put(b, 0, (int) byteRead);
                 bufferedLength.addAndGet(byteRead);
                 readLength += byteRead;
-
             }
 
             isReadByteFinished.set(true);
@@ -160,6 +159,7 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
 
 
     public void inspect(Response response) throws IOException {
+        System.out.println( getIndex() + "  response" +response.body().contentLength() +  " contentLength " +DownloadUtils.getExactContentLengthRangeFrom0(response.headers()) + "getExactContentLengthRangeFrom0 " + blockInfo.getContentLength());
         final BlockInfo blockInfo = getBlockInfo();
         final int code = response.code();
         final String newEtag = response.header(Util.ETAG);
@@ -200,6 +200,7 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
             raf.getFD().sync();
             blockInfo.increaseCurrentOffset(buffered);
             bufferedLength.addAndGet(-buffered);
+            task.getCallbackDispatcher().fetchProgress(task);
         }
 
 
