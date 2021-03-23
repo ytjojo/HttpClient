@@ -18,6 +18,7 @@ import okhttp3.Request;
 
 public class DownloadTaskTest extends TestCase {
     long start;
+    long stop;
 
     @Test
     public void testExecute() throws InterruptedException {
@@ -44,7 +45,7 @@ public class DownloadTaskTest extends TestCase {
                 System.out.println(tag + msg );
             }
         });
-        DownloadTask task = new DownloadTask(new File("/Users/jiulongteng/Downloads"),new OkHttpClient(),request,1);
+        DownloadTask task = new DownloadTask(new File("/Users/jiulongteng/Downloads"),new OkHttpClient(),request,5);
         task.setFinishRunnable(new Runnable() {
             @Override
             public void run() {
@@ -71,11 +72,12 @@ public class DownloadTaskTest extends TestCase {
             @Override
             public void fetchProgress(@NonNull DownloadTask task, int currentProgress, long currentSize, long contentLength) {
                 System.out.println("fetchProgress" + currentProgress + " currentSize "+ currentSize + " contentLength " + contentLength);
-//                if(currentProgress > 10){
-//                    System.out.println("----------stop");
-//                    task.stop();
-//                    System.out.println("----------stop");
-//                }
+                if(currentProgress > 10){
+                    System.out.println("----------stop");
+                    task.stop();
+                    stop = System.currentTimeMillis();
+                    System.out.println("----------after stop");
+                }
             }
 
             @Override
@@ -83,7 +85,7 @@ public class DownloadTaskTest extends TestCase {
                 if(realCause != null){
 //                    realCause.printStackTrace();
                 }
-                System.out.println("taskEnd   " + cause  + "  " +  + (System.currentTimeMillis() - start));
+                System.out.println("taskEnd  stop =" + (System.currentTimeMillis()   - stop)  + "  total = " +  + (System.currentTimeMillis() - start));
             }
         });
         DownloadCache.getInstance().add(task);

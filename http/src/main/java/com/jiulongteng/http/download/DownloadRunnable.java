@@ -39,12 +39,6 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
         super(task, info, index);
         this.bufferMax = 512 * 1024;    //设置允许的512KB的缓存数
     }
-    private Runnable flushRunnable = new Runnable() {
-        @Override
-        public void run() {
-            task.getFlushRunnable().flush(DownloadRunnable.this);
-        }
-    };
 
 
     @Override
@@ -113,16 +107,15 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
                     }
                 }
             }
-            Util.i(TAG,"parkThread");
+            Util.i(TAG,"   parkThread");
             parkThread();
 
 
         } catch (Exception e){
-            Util.e(TAG, "error" , e );
             task.setThrowable(e);
         }
         finally {
-            Util.i(TAG,"finally");
+            Util.i(TAG,"  finally");
             try{
                 unmap();
             }catch (IOException e){

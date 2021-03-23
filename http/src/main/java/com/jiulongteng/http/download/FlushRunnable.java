@@ -1,12 +1,7 @@
 package com.jiulongteng.http.download;
 
-import com.jiulongteng.http.download.db.DownloadCache;
-
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -14,12 +9,8 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.LockSupport;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class FlushRunnable implements Runnable {
     private static final String TAG = "FlushRunnable";
@@ -37,9 +28,7 @@ public class FlushRunnable implements Runnable {
 
     private volatile Future syncFuture;
 
-    private final ReentrantLock takeLock = new ReentrantLock();
-
-    private final Condition notEmpty = takeLock.newCondition();
+    AtomicBoolean isDone = new AtomicBoolean(false);
 
     Runnable finishRunnable;
     public FlushRunnable(DownloadTask task,Runnable finishRunnable) {
@@ -89,19 +78,16 @@ public class FlushRunnable implements Runnable {
 
     private void flushAll(){
 
-        if(task.isStoped()){
-            Runnable runnable;
+        if(isDone.get()){
             while (true){
-                try {
-                    runnable = blockingQueue.take();
+                Runnable runnable = blockingQueue.poll();
+                if(runnable != null){
                     runnable.run();
-                    Util.i(TAG," flushAll "+finishSize + "  ");
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
                 }
 
                 if(task.getRunnableSize() == finishSize){
                     break;
+                }else {
                 }
             }
         }else {
@@ -128,6 +114,7 @@ public class FlushRunnable implements Runnable {
     }
 
     public void done(AbstractDownloadRunnable downloadRunnable){
+        isDone.set(true);
         blockingQueue.offer(new Runnable() {
             @Override
             public void run() {
@@ -139,14 +126,11 @@ public class FlushRunnable implements Runnable {
                 }finally {
                     finishSize++;
                     downloadRunnable.unPark();
-                    Util.i(TAG,"  "+finishSize + "  done " + downloadRunnable.getIndex());
+                    Util.i(TAG,"  finishSize = "+finishSize + "  done " + downloadRunnable.getIndex());
                 }
 
             }
         });
-        if(task.isStoped()){
-            Util.i(TAG,"wake up " + downloadRunnable.getIndex());
-        }
         wakeup();
 
 

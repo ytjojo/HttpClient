@@ -12,6 +12,7 @@ import com.jiulongteng.http.download.db.DownloadCache;
 import com.jiulongteng.http.download.dispatcher.CallbackDispatcher;
 import com.jiulongteng.http.download.entry.BlockInfo;
 import com.jiulongteng.http.download.entry.BreakpointInfo;
+import com.jiulongteng.http.util.CollectionUtils;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -353,6 +354,14 @@ public class DownloadTask {
     public void stop(){
         if(taskStatus.compareAndSet(DownloadCache.RUNNING,DownloadCache.STOP)){
             setIsStoped(true);
+            if(!CollectionUtils.isEmpty(getDownloadRunnables())){
+                for( AbstractDownloadRunnable runnable: getDownloadRunnables()){
+                    runnable.setIsReadByteFinished(true);
+                    runnable.interrupt();
+                    getFlushRunnable().done(runnable);
+
+                }
+            }
         }else {
             throw new IllegalStateException(" task allready stoped");
         }

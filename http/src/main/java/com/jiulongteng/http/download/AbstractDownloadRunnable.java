@@ -74,4 +74,10 @@ public abstract class AbstractDownloadRunnable implements Runnable {
     public boolean getIsReadByteFinished() {
         return isReadByteFinished.get();
     }
+    public void interrupt(){
+        if(currentThread != null){
+            currentThread.interrupt();
+        }
+
+    }
 }
