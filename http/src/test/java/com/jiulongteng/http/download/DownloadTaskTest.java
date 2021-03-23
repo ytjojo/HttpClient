@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.jiulongteng.http.download.cause.EndCause;
+import com.jiulongteng.http.download.db.DownloadCache;
 
 import junit.framework.TestCase;
 
@@ -22,7 +23,28 @@ public class DownloadTaskTest extends TestCase {
     public void testExecute() throws InterruptedException {
         Request request = new Request.Builder().url("http://update.myweimai.com/wemay.apk")
                 .build();
-        DownloadTask task = new DownloadTask(new File("/Users/jiulongteng/Downloads"),new OkHttpClient(),request,5);
+        Util.setLogger(new Util.Logger() {
+            @Override
+            public void e(String tag, String msg, Throwable e) {
+                System.out.println(tag + msg + e.getMessage());
+            }
+
+            @Override
+            public void w(String tag, String msg) {
+                System.out.println(tag + msg );
+            }
+
+            @Override
+            public void d(String tag, String msg) {
+                System.out.println(tag + msg );
+            }
+
+            @Override
+            public void i(String tag, String msg) {
+                System.out.println(tag + msg );
+            }
+        });
+        DownloadTask task = new DownloadTask(new File("/Users/jiulongteng/Downloads"),new OkHttpClient(),request,1);
         task.setFinishRunnable(new Runnable() {
             @Override
             public void run() {
@@ -49,13 +71,21 @@ public class DownloadTaskTest extends TestCase {
             @Override
             public void fetchProgress(@NonNull DownloadTask task, int currentProgress, long currentSize, long contentLength) {
                 System.out.println("fetchProgress" + currentProgress + " currentSize "+ currentSize + " contentLength " + contentLength);
+//                if(currentProgress > 10){
+//                    System.out.println("----------stop");
+//                    task.stop();
+//                    System.out.println("----------stop");
+//                }
             }
 
             @Override
-            public void taskEnd(@NonNull DownloadTask task, @NonNull EndCause cause, @Nullable Exception realCause) {
-                System.out.println("taskEnd" + (System.currentTimeMillis() - start));
+            public void taskEnd(@NonNull DownloadTask task, @NonNull EndCause cause, @Nullable Throwable realCause) {
+                if(realCause != null){
+//                    realCause.printStackTrace();
+                }
+                System.out.println("taskEnd   " + cause  + "  " +  + (System.currentTimeMillis() - start));
             }
         });
-        task.execute();
+        DownloadCache.getInstance().add(task);
     }
 }

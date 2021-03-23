@@ -90,12 +90,12 @@ public class CallbackDispatcher implements DownloadListener {
     }
 
     @Override
-    public void taskEnd(@NonNull DownloadTask task, @NonNull EndCause cause, @Nullable Exception realCause) {
+    public void taskEnd(@NonNull DownloadTask task, @NonNull EndCause cause, @Nullable Throwable realCause) {
         if (uiHandler != null) {
             uiHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    if (cause == null && realCause == null) {
+                    if (cause == EndCause.COMPLETED && realCause == null) {
                         //100%
                         fetchProgress(task);
                     }

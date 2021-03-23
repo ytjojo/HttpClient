@@ -6,12 +6,16 @@ import android.os.Looper;
 import androidx.annotation.IntRange;
 import androidx.annotation.Nullable;
 
+import com.jiulongteng.http.download.cause.EndCause;
+import com.jiulongteng.http.download.db.Dao;
+import com.jiulongteng.http.download.db.DownloadCache;
 import com.jiulongteng.http.download.dispatcher.CallbackDispatcher;
 import com.jiulongteng.http.download.entry.BlockInfo;
 import com.jiulongteng.http.download.entry.BreakpointInfo;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
@@ -21,6 +25,7 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -33,7 +38,6 @@ public class DownloadTask {
     private File mFile;
 
     private AtomicBoolean isStoped;
-    private long compeleteLength;
     OkHttpClient client;
     Request rawRequest;
     String fileName;
@@ -61,11 +65,12 @@ public class DownloadTask {
     FlushRunnable flushRunnable;
 
     Runnable finishRunnable;
+    Throwable causeThrowable;
 
     DownloadListener downloadListener;
     CallbackDispatcher callbackDispatcher;
-    boolean isSuccess;
-
+    AtomicInteger taskStatus =new AtomicInteger(DownloadCache.PENDING);
+    AtomicBoolean isSuccess = new AtomicBoolean(false);
     public DownloadTask(File file, OkHttpClient client, Request request, Integer connectionCount) {
 
         if (file.isDirectory()) {
@@ -90,9 +95,10 @@ public class DownloadTask {
         try {
             pretreatment.execute();
         } catch (Throwable e) {
-            //TODO dispatch error
+            getCallbackDispatcher().taskEnd(this, EndCause.ERROR,e);
             return;
         }
+        DownloadCache.getInstance().updateDownloadInfo(info);
         if (isStoped.get()) {
             return;
         }
@@ -100,13 +106,29 @@ public class DownloadTask {
         downloadRunnables = new CopyOnWriteArrayList<>();
         downloadRunnables.addAll(runnables);
         flushRunnable = new FlushRunnable(this, finishRunnable);
+
+        getCallbackDispatcher().fetchStart(this, getInfo().getTotalOffset() > 0 );
         try {
             startSubTask(runnables);
         } catch (InterruptedException e) {
-            e.printStackTrace();
+           //ignore
         }
-        isSuccess = true;
-        getCallbackDispatcher().taskEnd(this,null,null);
+        if(getInfo().getTotalOffset() == getInfo().getTotalLength()){
+            DownloadCache.getInstance().deleteInfo(info.getId());
+            setStatus(DownloadCache.COMPLETE);
+            getCallbackDispatcher().taskEnd(this, EndCause.COMPLETED,null);
+        }else {
+            if(causeThrowable != null){
+                setStatus(DownloadCache.STOP);
+                getCallbackDispatcher().taskEnd(this, EndCause.ERROR,causeThrowable);
+            }else {
+                setStatus(DownloadCache.STOP);
+                getCallbackDispatcher().taskEnd(this, EndCause.CANCELED,null);
+            }
+
+        }
+
+
     }
 
     public void setFinishRunnable(Runnable runnable) {
@@ -130,7 +152,7 @@ public class DownloadTask {
     }
 
     private void startSubTask(ArrayList<AbstractDownloadRunnable> runnables) throws InterruptedException {
-        if (isStoped.get() || runnables.isEmpty()) {
+        if (runnables.isEmpty()) {
             return;
         }
         ArrayList<Future> futures = new ArrayList<>();
@@ -179,21 +201,10 @@ public class DownloadTask {
     }
 
 
-    public AtomicBoolean getIsStoped() {
-        return isStoped;
-    }
-
     public void setIsStoped(boolean isStoped) {
         this.isStoped.set(isStoped);
     }
 
-    public long getCompeleteLength() {
-        return compeleteLength;
-    }
-
-    public void setCompeleteLength(long compeleteLength) {
-        this.compeleteLength = compeleteLength;
-    }
 
     public OkHttpClient getClient() {
         return client;
@@ -284,9 +295,7 @@ public class DownloadTask {
         this.info = info;
     }
 
-    public void setFilenameFromResponse(boolean filenameFromResponse) {
-        isFilenameFromResponse = filenameFromResponse;
-    }
+
 
     @Nullable
     public Integer getConnectionCount() {
@@ -308,6 +317,10 @@ public class DownloadTask {
         return downloadRunnables.size();
     }
 
+    public CopyOnWriteArrayList<AbstractDownloadRunnable> getDownloadRunnables() {
+        return downloadRunnables;
+    }
+
     public FlushRunnable getFlushRunnable() {
         return flushRunnable;
     }
@@ -327,7 +340,31 @@ public class DownloadTask {
     public CallbackDispatcher getCallbackDispatcher() {
         return callbackDispatcher;
     }
-    public boolean isSuccess(){
-        return isSuccess;
+
+    public void setStatus(int pretreatment) {
+        taskStatus.set(pretreatment);
+    }
+
+    public int getTaskStatus() {
+        return taskStatus.get();
+    }
+
+
+    public void stop(){
+        if(taskStatus.compareAndSet(DownloadCache.RUNNING,DownloadCache.STOP)){
+            setIsStoped(true);
+        }else {
+            throw new IllegalStateException(" task allready stoped");
+        }
+
+
+    }
+
+    public boolean isSuccess() {
+        return isSuccess.get();
+    }
+
+    public void setThrowable(Exception e) {
+        this.causeThrowable = e;
     }
 }

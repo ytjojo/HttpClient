@@ -4,12 +4,12 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.jiulongteng.http.download.cause.ResumeFailedCause;
+import com.jiulongteng.http.download.db.DownloadCache;
 import com.jiulongteng.http.download.entry.BreakpointInfo;
 import com.jiulongteng.http.util.TextUtils;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
-import java.util.UUID;
 
 import okhttp3.Headers;
 import okhttp3.Request;
@@ -24,26 +24,32 @@ public class DownloadPretreatment {
     }
 
 
+    private void restore() {
+
+        BreakpointInfo breakpointInfo = DownloadCache.getInstance().getDownloadInfo(task.getUrl());
+        if (breakpointInfo == null) {
+            breakpointInfo = new BreakpointInfo(-1, task.getUrl(), null, task.getParentFile(),
+                    task.getFilename(), task.isFilenameFromResponse());
+            DownloadCache.getInstance().saveDownloadInfo(breakpointInfo);
+            task.setInfo(breakpointInfo);
+        }else {
+            DownloadCache.getInstance().getBlockInfo(breakpointInfo);
+
+        }
 
 
-    private void restore(){
-
-        BreakpointInfo newInfo = new BreakpointInfo(1, task.getUrl(), task.getParentFile(),
-                task.getFilename());
-        task.setInfo(newInfo);
     }
 
 
-
-    public void execute() throws IOException{
+    public void execute() throws IOException {
         restore();
-        if(task.isStoped()){
+        if (task.isStoped()) {
             task.dispatchCancel();
             return;
         }
         task.getCallbackDispatcher().connectTrialStart(task);
         executeTrial();
-        if(task.isStoped()){
+        if (task.isStoped()) {
             task.dispatchCancel();
             return;
         }
@@ -53,26 +59,27 @@ public class DownloadPretreatment {
 
     private void localCheck() throws IOException {
 
-        if(resumable){
-            boolean isExists= task.getFile().exists();
-            boolean isCorrect = BreakpointInfo.isCorrect(task.getInfo(),task);
+        if (resumable) {
+            boolean isExists = task.getFile().exists();
+            boolean isCorrect = BreakpointInfo.isCorrect(task.getInfo(), task);
             boolean dirty = !isCorrect || !isExists;
-            if(dirty){
-                if(task.getFile() != null && task.getFile().exists() && !task.getFile().delete()){
+            if (dirty) {
+                if (task.getFile() != null && task.getFile().exists() && !task.getFile().delete()) {
                     throw new IOException("Delete file failed!");
                 }
                 Util.assembleBlock(task);
-                task.getCallbackDispatcher().fetchStart(task,true);
-            }else {
-                task.getCallbackDispatcher().fetchStart(task,false);
+                DownloadCache.getInstance().saveBlockInfo(task.getInfo().getBlockInfoList(),task.getInfo());
+
+            } else {
             }
 
-        }else {
-            if(task.getFile() != null && !task.getFile().delete()){
+
+        } else {
+            if (task.getFile() != null && !task.getFile().delete()) {
                 throw new IOException("Delete file failed!");
             }
             Util.assembleBlock(task);
-            task.getCallbackDispatcher().fetchStart(task,true);
+            DownloadCache.getInstance().saveBlockInfo(task.getInfo().getBlockInfoList(),task.getInfo());
         }
 
         if (!task.getParentFile().exists()) {
@@ -83,7 +90,7 @@ public class DownloadPretreatment {
         }
     }
 
-    private void executeTrial() throws IOException{
+    private void executeTrial() throws IOException {
 
         boolean isNeedTrialHeadMethod;
         Response response = null;
@@ -127,6 +134,7 @@ public class DownloadPretreatment {
             throw new DownloadException(DownloadException.SERVER_CANCEL_ERROR, "trial exception code = " + task.getResponseCode());
         }
     }
+
     public boolean isChunked() {
         return task.getInstanceLength() == Util.CHUNKED_CONTENT_LENGTH;
     }
@@ -168,9 +176,9 @@ public class DownloadPretreatment {
 
 
     public static ResumeFailedCause getPreconditionFailedCause(int responseCode,
-                                                        boolean isAlreadyProceed,
-                                                        @NonNull BreakpointInfo info,
-                                                        @Nullable String responseEtag) {
+                                                               boolean isAlreadyProceed,
+                                                               @NonNull BreakpointInfo info,
+                                                               @Nullable String responseEtag) {
         final String localEtag = info.getEtag();
         if (responseCode == HttpURLConnection.HTTP_PRECON_FAILED) {
             return ResumeFailedCause.RESPONSE_PRECONDITION_FAILED;

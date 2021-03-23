@@ -21,5 +21,5 @@ public interface DownloadListener {
     void fetchProgress(@NonNull DownloadTask task,int currentProgress, long currentSize, long contentLength);
 
     void taskEnd(@NonNull DownloadTask task, @NonNull EndCause cause,
-                 @Nullable Exception realCause);
+                 @Nullable Throwable realCause);
 }

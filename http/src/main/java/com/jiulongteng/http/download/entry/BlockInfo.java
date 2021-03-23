@@ -32,12 +32,13 @@ public class BlockInfo {
     @IntRange(from = 0)
     private final long contentLength;
     private final AtomicLong currentOffset;
+    private int id;
 
     public BlockInfo(long startOffset, long contentLength) {
-        this(startOffset, contentLength, 0);
+        this(-1,startOffset, contentLength, 0);
     }
 
-    public BlockInfo(long startOffset, long contentLength, @IntRange(from = 0) long currentOffset) {
+    public BlockInfo(int id,long startOffset, long contentLength, @IntRange(from = 0) long currentOffset) {
         if (startOffset < 0 || (contentLength < 0 && contentLength != Util.CHUNKED_CONTENT_LENGTH)
                 || currentOffset < 0) {
             throw new IllegalArgumentException();
@@ -46,6 +47,7 @@ public class BlockInfo {
         this.startOffset = startOffset;
         this.contentLength = contentLength;
         this.currentOffset = new AtomicLong(currentOffset);
+        this.id = id;
     }
 
     public long getCurrentOffset() {
@@ -77,7 +79,7 @@ public class BlockInfo {
     }
 
     public BlockInfo copy() {
-        return new BlockInfo(startOffset, contentLength, currentOffset.get());
+        return new BlockInfo(id,startOffset, contentLength, currentOffset.get());
     }
 
     @Override public String toString() {
@@ -88,4 +90,7 @@ public class BlockInfo {
         return getRangeLeft() == getRangeRight();
     }
 
+    public int getId() {
+        return id;
+    }
 }

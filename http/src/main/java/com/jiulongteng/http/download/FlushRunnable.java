@@ -1,8 +1,12 @@
 package com.jiulongteng.http.download;
 
+import com.jiulongteng.http.download.db.DownloadCache;
+
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -12,11 +16,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class FlushRunnable implements Runnable {
+    private static final String TAG = "FlushRunnable";
 
     private static final ExecutorService FILE_IO_EXECUTOR = new ThreadPoolExecutor(0,
             Integer.MAX_VALUE,
@@ -31,6 +37,10 @@ public class FlushRunnable implements Runnable {
 
     private volatile Future syncFuture;
 
+    private final ReentrantLock takeLock = new ReentrantLock();
+
+    private final Condition notEmpty = takeLock.newCondition();
+
     Runnable finishRunnable;
     public FlushRunnable(DownloadTask task,Runnable finishRunnable) {
         this.task = task;
@@ -44,11 +54,14 @@ public class FlushRunnable implements Runnable {
         while (true){
             parkThread();
             flushAll();
+            if(task.isStoped()){
+                Util.i(TAG,"   loop " + finishSize);
+            }
             if(task.getRunnableSize() == finishSize){
                 if(finishRunnable!= null){
                     FILE_IO_EXECUTOR.submit(finishRunnable);
                 }
-
+                Util.i(TAG, " finishSize ");
                 break;
             }
         }
@@ -65,6 +78,7 @@ public class FlushRunnable implements Runnable {
         Thread thread = parkThreadRef.get();
         if(thread != null){
             unparkThread(thread);
+
         }
 
     }
@@ -74,21 +88,39 @@ public class FlushRunnable implements Runnable {
     }
 
     private void flushAll(){
-        Runnable runnable;
-        while ((runnable = blockingQueue.poll()) != null){
-            runnable.run();
-        }
-        for (int i = 0; i < task.getRunnableSize(); i++) {
-            AbstractDownloadRunnable downloadRunnable = downloadRunnableMap.remove(i);
-            if(downloadRunnable != null){
+
+        if(task.isStoped()){
+            Runnable runnable;
+            while (true){
                 try {
-                    downloadRunnable.flush();
-                } catch (IOException e) {
+                    runnable = blockingQueue.take();
+                    runnable.run();
+                    Util.i(TAG," flushAll "+finishSize + "  ");
+                } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-            }
 
+                if(task.getRunnableSize() == finishSize){
+                    break;
+                }
+            }
+        }else {
+            for (int i = 0; i < task.getRunnableSize(); i++) {
+                AbstractDownloadRunnable downloadRunnable = downloadRunnableMap.remove(i);
+                if(downloadRunnable != null){
+                    try {
+                        downloadRunnable.flush();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
+                }
+
+            }
         }
+
+
+
     }
     public void flush(AbstractDownloadRunnable downloadRunnable){
         downloadRunnableMap.put(downloadRunnable.getIndex(),downloadRunnable);
@@ -96,25 +128,27 @@ public class FlushRunnable implements Runnable {
     }
 
     public void done(AbstractDownloadRunnable downloadRunnable){
-        try {
-            blockingQueue.put(new Runnable() {
-                @Override
-                public void run() {
-                    try{
-                        downloadRunnable.flush();
+        blockingQueue.offer(new Runnable() {
+            @Override
+            public void run() {
+                try{
+                    downloadRunnable.flush();
 
-                    }catch (IOException e){
-                        e.printStackTrace();
-                    }finally {
-                        finishSize++;
-                        downloadRunnable.unPark();
-                    }
+                }catch (IOException e){
 
+                }finally {
+                    finishSize++;
+                    downloadRunnable.unPark();
+                    Util.i(TAG,"  "+finishSize + "  done " + downloadRunnable.getIndex());
                 }
-            });
-        } catch (InterruptedException e) {
+
+            }
+        });
+        if(task.isStoped()){
+            Util.i(TAG,"wake up " + downloadRunnable.getIndex());
         }
         wakeup();
+
 
     }
 
@@ -131,4 +165,6 @@ public class FlushRunnable implements Runnable {
     void unparkThread(Thread thread) {
         LockSupport.unpark(thread);
     }
+
+
 }

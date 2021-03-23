@@ -66,7 +66,7 @@ public class Util {
     private static final long FOUR_CONNECTION_UPPER_LIMIT = 100 * 1024 * 1024; // 100MiB
 
     public interface Logger {
-        void e(String tag, String msg, Exception e);
+        void e(String tag, String msg, Throwable e);
 
         void w(String tag, String msg);
 
@@ -77,7 +77,7 @@ public class Util {
 
     public static class EmptyLogger implements Logger {
         @Override
-        public void e(String tag, String msg, Exception e) {
+        public void e(String tag, String msg, Throwable e) {
         }
 
         @Override
@@ -117,7 +117,7 @@ public class Util {
         return logger;
     }
 
-    public static void e(String tag, String msg, Exception e) {
+    public static void e(String tag, String msg, Throwable e) {
         if (logger != null) {
             logger.e(tag, msg, e);
             return;

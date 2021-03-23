@@ -1,8 +1,11 @@
 package com.jiulongteng.http.download;
 
 import android.os.ParcelFileDescriptor;
+import android.util.Log;
 
+import com.jiulongteng.http.download.cause.EndCause;
 import com.jiulongteng.http.download.cause.ResumeFailedCause;
+import com.jiulongteng.http.download.db.DownloadCache;
 import com.jiulongteng.http.download.entry.BlockInfo;
 import com.jiulongteng.http.download.entry.BreakpointInfo;
 import com.jiulongteng.http.util.TextUtils;
@@ -26,7 +29,7 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
     private long bufferMax; //缓冲区允许放置的字节级数据量
     private AtomicLong bufferedLength;    //缓冲区中未刷入内存的大小即缓冲区写入模式下的起始位置
     private FileChannel fileChannel;
-    private AtomicBoolean isReadByteFinished;
+
 
     long readLength;
     RandomAccessFile raf;
@@ -36,6 +39,12 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
         super(task, info, index);
         this.bufferMax = 512 * 1024;    //设置允许的512KB的缓存数
     }
+    private Runnable flushRunnable = new Runnable() {
+        @Override
+        public void run() {
+            task.getFlushRunnable().flush(DownloadRunnable.this);
+        }
+    };
 
 
     @Override
@@ -67,12 +76,13 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
             raf.seek(blockInfo.getRangeLeft());
             bytebuffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, blockInfo.getRangeLeft(), blockInfo.getContentLength());
             bufferedLength = new AtomicLong(0);
-            isReadByteFinished = new AtomicBoolean(false);
             long byteRead = 0;
             readLength = 0;
             byte[] b = new byte[8096];
             while ((byteRead = bis.read(b)) != -1) {
                 if (task.isStoped()) {
+                    Util.i(TAG," ----found stop");
+                    task.getFlushRunnable().flush(this);
                     break;
                 }
 
@@ -92,7 +102,7 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
                 readLength += byteRead;
             }
 
-            isReadByteFinished.set(true);
+            setIsReadByteFinished(true);
             task.getFlushRunnable().done(this);
             if (!task.isStoped()) {
                 boolean isNotChunked = getContentLength() != Util.CHUNKED_CONTENT_LENGTH;
@@ -103,21 +113,21 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
                     }
                 }
             }
-
+            Util.i(TAG,"parkThread");
             parkThread();
 
-        } catch (IOException e) {
 
         } catch (Exception e){
-            e.printStackTrace();
+            Util.e(TAG, "error" , e );
+            task.setThrowable(e);
         }
         finally {
+            Util.i(TAG,"finally");
             try{
                 unmap();
             }catch (IOException e){
 
             }
-
             okhttp3.internal.Util.closeQuietly(fileChannel);
             okhttp3.internal.Util.closeQuietly(raf);
             okhttp3.internal.Util.closeQuietly(bis);
@@ -159,7 +169,7 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
 
 
     public void inspect(Response response) throws IOException {
-        System.out.println( getIndex() + "  response" +response.body().contentLength() +  " contentLength " +DownloadUtils.getExactContentLengthRangeFrom0(response.headers()) + "getExactContentLengthRangeFrom0 " + blockInfo.getContentLength());
+        System.out.println( getIndex() + "  response" +response.body().contentLength() +  " contentLength " +DownloadUtils.getExactContentLengthRangeFrom0(response.headers()) + " exactContentLengthRange " + blockInfo.getContentLength());
         final BlockInfo blockInfo = getBlockInfo();
         final int code = response.code();
         final String newEtag = response.header(Util.ETAG);
@@ -195,11 +205,12 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
     @Override
     public void flush() throws IOException {
         final long buffered = bufferedLength.get();
-        if (bytebuffer != null && (buffered > bufferMax || (isReadByteFinished.get() && buffered > 0))) {
+        if (bytebuffer != null && (buffered > bufferMax || (getIsReadByteFinished() && buffered > 0))) {
             bytebuffer.force();
             raf.getFD().sync();
             blockInfo.increaseCurrentOffset(buffered);
             bufferedLength.addAndGet(-buffered);
+            DownloadCache.getInstance().updateBlockInfo(blockInfo.getId(),blockInfo.getCurrentOffset());
             task.getCallbackDispatcher().fetchProgress(task);
         }
 

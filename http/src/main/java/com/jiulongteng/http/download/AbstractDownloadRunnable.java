@@ -1,8 +1,11 @@
 package com.jiulongteng.http.download;
 
+import android.nfc.Tag;
+
 import com.jiulongteng.http.download.entry.BlockInfo;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
 public abstract class AbstractDownloadRunnable implements Runnable {
@@ -12,6 +15,7 @@ public abstract class AbstractDownloadRunnable implements Runnable {
     private Thread currentThread;
     private int index;
     private long contentLength;
+    private AtomicBoolean  isReadByteFinished = new AtomicBoolean(false);;
 
     public AbstractDownloadRunnable(DownloadTask task, BlockInfo blockInfo, int index) {
         this.blockInfo = blockInfo;
@@ -46,6 +50,13 @@ public abstract class AbstractDownloadRunnable implements Runnable {
     }
     public void setCurrentThread(){
         this.currentThread = Thread.currentThread();
+        currentThread.setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+            @Override
+            public void uncaughtException(Thread t, Throwable e) {
+                e.printStackTrace();
+                Util.e("UncaughtExceptionHandler","error" + index , e);
+            }
+        });
     }
 
     public long getContentLength() {
@@ -54,5 +65,13 @@ public abstract class AbstractDownloadRunnable implements Runnable {
 
     public void setContentLength(long contentLength) {
         this.contentLength = contentLength;
+    }
+
+    public void setIsReadByteFinished(boolean isReadByteFinished) {
+        this.isReadByteFinished.set(isReadByteFinished);
+    }
+
+    public boolean getIsReadByteFinished() {
+        return isReadByteFinished.get();
     }
 }
