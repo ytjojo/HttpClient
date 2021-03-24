@@ -61,7 +61,7 @@ public class DownloadTask {
 
     @Nullable
     private final Integer connectionCount;
-    CopyOnWriteArrayList<AbstractDownloadRunnable> downloadRunnables;
+    ArrayList<AbstractDownloadRunnable> downloadRunnables;
 
     FlushRunnable flushRunnable;
 
@@ -91,20 +91,22 @@ public class DownloadTask {
 
 
     public void execute() {
+        causeThrowable = null;
         getCallbackDispatcher().taskStart(this);
         pretreatment = new DownloadPretreatment(this);
         try {
             pretreatment.execute();
         } catch (Throwable e) {
-            getCallbackDispatcher().taskEnd(this, EndCause.ERROR,e);
+            dispatchError(e);
             return;
         }
         DownloadCache.getInstance().updateDownloadInfo(info);
         if (isStoped.get()) {
+            dispatchCancel();
             return;
         }
         ArrayList<AbstractDownloadRunnable> runnables = prepareSubTask();
-        downloadRunnables = new CopyOnWriteArrayList<>();
+        downloadRunnables = new ArrayList<>();
         downloadRunnables.addAll(runnables);
         flushRunnable = new FlushRunnable(this, finishRunnable);
 
@@ -112,19 +114,17 @@ public class DownloadTask {
         try {
             startSubTask(runnables);
         } catch (InterruptedException e) {
-           //ignore
+
         }
         if(getInfo().getTotalOffset() == getInfo().getTotalLength()){
             DownloadCache.getInstance().deleteInfo(info.getId());
-            setStatus(DownloadCache.COMPLETE);
+            DownloadCache.getInstance().onComplete(this,true);
             getCallbackDispatcher().taskEnd(this, EndCause.COMPLETED,null);
         }else {
             if(causeThrowable != null){
-                setStatus(DownloadCache.STOP);
-                getCallbackDispatcher().taskEnd(this, EndCause.ERROR,causeThrowable);
+                dispatchError(causeThrowable);
             }else {
-                setStatus(DownloadCache.STOP);
-                getCallbackDispatcher().taskEnd(this, EndCause.CANCELED,null);
+               dispatchCancel();
             }
 
         }
@@ -308,7 +308,13 @@ public class DownloadTask {
     }
 
     public void dispatchCancel() {
+        DownloadCache.getInstance().onStop(this,false);
+        getCallbackDispatcher().taskEnd(this, EndCause.CANCELED,null);
+    }
 
+    public void dispatchError(Throwable throwable) {
+        DownloadCache.getInstance().onStop(this,false);
+        getCallbackDispatcher().taskEnd(this, EndCause.ERROR,throwable);
     }
 
     public int getRunnableSize() {
@@ -318,7 +324,7 @@ public class DownloadTask {
         return downloadRunnables.size();
     }
 
-    public CopyOnWriteArrayList<AbstractDownloadRunnable> getDownloadRunnables() {
+    public ArrayList<AbstractDownloadRunnable> getDownloadRunnables() {
         return downloadRunnables;
     }
 

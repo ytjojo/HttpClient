@@ -1,16 +1,20 @@
 package com.jiulongteng.http.download.db;
 
+import androidx.annotation.NonNull;
+
 import com.jiulongteng.http.download.DownloadTask;
+import com.jiulongteng.http.download.cause.EndCause;
 import com.jiulongteng.http.download.entry.BlockInfo;
 import com.jiulongteng.http.download.entry.BreakpointInfo;
 
+import java.io.File;
 import java.util.ArrayDeque;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class DownloadCache implements BreakpointStore{
+public class DownloadCache implements BreakpointStore {
 
     public static final int PENDING = 0;
     public static final int RUNNING = 1;
@@ -58,10 +62,10 @@ public class DownloadCache implements BreakpointStore{
         }
     };
 
-    public static DownloadCache getInstance(){
-        if(sInstance == null){
-            synchronized (DownloadCache.class){
-                if(sInstance == null){
+    public static DownloadCache getInstance() {
+        if (sInstance == null) {
+            synchronized (DownloadCache.class) {
+                if (sInstance == null) {
                     sInstance = new DownloadCache();
                 }
             }
@@ -70,7 +74,7 @@ public class DownloadCache implements BreakpointStore{
     }
 
 
-    public void add(DownloadTask task) {
+    public synchronized void add(DownloadTask task) {
         if (!allTasks.containsKey(task.getUrl())) {
             allTasks.put(task.getUrl(), task);
             if (!runningQueue.offer(task)) {
@@ -78,10 +82,12 @@ public class DownloadCache implements BreakpointStore{
             } else {
                 submitTask(task);
             }
+        }else {
+            task.getCallbackDispatcher().taskEnd(task, EndCause.SAME_TASK_BUSY,null);
         }
     }
 
-    public void submitTask(DownloadTask task) {
+    private void submitTask(DownloadTask task) {
         onStart(task);
         task.execute();
 
@@ -95,6 +101,7 @@ public class DownloadCache implements BreakpointStore{
     public void onComplete(DownloadTask task, boolean startNext) {
         task.setStatus(COMPLETE);
         allTasks.remove(task.getUrl());
+        runningQueue.remove(task);
         if (startNext && runningQueue.remove(task)) {
             startNext();
         }
@@ -102,6 +109,8 @@ public class DownloadCache implements BreakpointStore{
 
     public void onStop(DownloadTask task, boolean startNext) {
         task.setStatus(STOP);
+        allTasks.remove(task.getUrl());
+        runningQueue.remove(task);
         if (startNext && runningQueue.remove(task)) {
             startNext();
         }
@@ -164,7 +173,7 @@ public class DownloadCache implements BreakpointStore{
 
     @Override
     public void saveBlockInfo(List<BlockInfo> blockInfo, BreakpointInfo breakpointInfo) {
-        breakpointStore.saveBlockInfo(blockInfo,breakpointInfo);
+        breakpointStore.saveBlockInfo(blockInfo, breakpointInfo);
     }
 
     @Override
@@ -174,7 +183,7 @@ public class DownloadCache implements BreakpointStore{
 
     @Override
     public void updateBlockInfo(int blockInfoId, long currentOffset) {
-        breakpointStore.updateBlockInfo(blockInfoId,currentOffset);
+        breakpointStore.updateBlockInfo(blockInfoId, currentOffset);
     }
 
     @Override
@@ -199,5 +208,24 @@ public class DownloadCache implements BreakpointStore{
 
     public void setBreakpointStore(BreakpointStore breakpointStore) {
         this.breakpointStore = breakpointStore;
+    }
+
+    public synchronized boolean isFileConflictAfterRun(@NonNull DownloadTask task) {
+        final File file = task.getFile();
+        if (file == null) return false;
+
+        // Other one is running, cancel the current task.
+        for (DownloadTask downloadTask : allTasks.values()) {
+            if (downloadTask == task) {
+                continue;
+            }
+
+            final File otherFile = downloadTask.getFile();
+            if (otherFile != null && file.equals(otherFile)) {
+                return true;
+            }
+        }
+        return false;
+
     }
 }

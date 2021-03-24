@@ -1,4 +1,4 @@
-package com.jiulongteng.http.download;
+package com.jiulongteng.http.download.cause;
 
 public class DownloadException extends RuntimeException {
     public static final int SERVER_ERROR = 0;

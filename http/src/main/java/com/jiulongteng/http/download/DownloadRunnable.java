@@ -1,9 +1,6 @@
 package com.jiulongteng.http.download;
 
-import android.os.ParcelFileDescriptor;
-import android.util.Log;
-
-import com.jiulongteng.http.download.cause.EndCause;
+import com.jiulongteng.http.download.cause.DownloadException;
 import com.jiulongteng.http.download.cause.ResumeFailedCause;
 import com.jiulongteng.http.download.db.DownloadCache;
 import com.jiulongteng.http.download.entry.BlockInfo;
@@ -11,12 +8,10 @@ import com.jiulongteng.http.download.entry.BreakpointInfo;
 import com.jiulongteng.http.util.TextUtils;
 
 import java.io.BufferedInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import okhttp3.Request;

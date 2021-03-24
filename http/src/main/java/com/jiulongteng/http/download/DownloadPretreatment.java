@@ -1,13 +1,17 @@
 package com.jiulongteng.http.download;
 
+import android.os.StatFs;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.jiulongteng.http.download.cause.DownloadException;
 import com.jiulongteng.http.download.cause.ResumeFailedCause;
 import com.jiulongteng.http.download.db.DownloadCache;
 import com.jiulongteng.http.download.entry.BreakpointInfo;
 import com.jiulongteng.http.util.TextUtils;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 
@@ -58,6 +62,9 @@ public class DownloadPretreatment {
     }
 
     private void localCheck() throws IOException {
+        if(DownloadCache.getInstance().isFileConflictAfterRun(task)){
+            throw new DownloadException(DownloadException.FILE_BUSY_ERROR,"file busy");
+        }
 
         if (resumable) {
             boolean isExists = task.getFile().exists();
@@ -87,6 +94,22 @@ public class DownloadPretreatment {
         }
         if (!task.getFile().exists()) {
             task.getFile().createNewFile();
+        }
+
+        final long totalLength = task.getInfo().getTotalLength();
+        boolean isFileScheme = true;
+        if (isFileScheme && task.getInfo().isChunked()) {
+            final File file = task.getFile();
+            final long requireSpace = totalLength - file.length();
+            if (requireSpace > 0) {
+                StatFs statFs =  new StatFs(file.getAbsolutePath()) ;
+                final long freeSpace = Util.getFreeSpaceBytes(statFs);
+                if (freeSpace < requireSpace) {
+                    throw new DownloadException(DownloadException.PROTOCOL_ERROR, "There is Free space less than Require space: " + freeSpace + " < " + requireSpace);
+                }
+                DownloadUtils.createFile(file,totalLength);
+            }
+        } else {
         }
     }
 

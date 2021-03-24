@@ -9,12 +9,13 @@ import com.jiulongteng.http.download.entry.BreakpointInfo;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 /**
  * 一个业务类
  */
-public class Dao implements BreakpointStore{
+public class Dao implements BreakpointStore {
     private static volatile Dao instance = null;
     private Context mContext;
 
@@ -152,7 +153,7 @@ public class Dao implements BreakpointStore{
     }
 
     /**
-     * 得到下载具体信息
+     * 得到下载进度信息
      */
     public List<BlockInfo> getBlockInfo(BreakpointInfo info) {
         List<BlockInfo> list = new ArrayList<BlockInfo>();
@@ -176,6 +177,54 @@ public class Dao implements BreakpointStore{
         }
         info.resetBlockInfos();
         info.addAllBlockInfo(list);
+        return list;
+    }
+
+    /**
+     * 得到下载进度信息
+     */
+    public List<BreakpointInfo> getAllDownloadInfo() {
+        List<BreakpointInfo> list = new ArrayList<BreakpointInfo>();
+        HashMap<Integer, ArrayList<BlockInfo>> allBlocks = new HashMap<>();
+        SQLiteDatabase database = getConnection();
+        Cursor blockCursor = null;
+        Cursor breakpointInfoCursor = null;
+        try {
+            String sql = "select _id, start_pos,content_length,current_offset,download_info_id from block_info";
+            blockCursor = database.rawQuery(sql, null);
+            while (blockCursor.moveToNext()) {
+                int downloadInfoId = blockCursor.getInt(4);
+                ArrayList<BlockInfo> blockInfos = allBlocks.get(downloadInfoId);
+                if (blockInfos == null) {
+                    blockInfos = new ArrayList<>();
+                    allBlocks.put(downloadInfoId, blockInfos);
+                }
+                BlockInfo blockInfo = new BlockInfo(blockCursor.getInt(0),
+                        blockCursor.getLong(1), blockCursor.getLong(2), blockCursor.getLong(3));
+                blockInfos.add(blockInfo);
+            }
+
+            sql = "select _id, url,etag,parent_dir_path, file_name, ask_only_parent_path from download_info";
+            breakpointInfoCursor = database.rawQuery(sql, null);
+            while (blockCursor.moveToNext()) {
+                BreakpointInfo info = new BreakpointInfo(breakpointInfoCursor.getInt(0),
+                        breakpointInfoCursor.getString(1), breakpointInfoCursor.getString(2), new File(breakpointInfoCursor.getString(3)), breakpointInfoCursor.getString(4), breakpointInfoCursor.getInt(5) == 1);
+                list.add(info);
+            }
+            for (BreakpointInfo info : list) {
+                info.addAllBlockInfo(allBlocks.get(info.getId()));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+
+            if (null != blockCursor) {
+                blockCursor.close();
+            }
+            if (null != breakpointInfoCursor) {
+                breakpointInfoCursor.close();
+            }
+        }
         return list;
     }
 

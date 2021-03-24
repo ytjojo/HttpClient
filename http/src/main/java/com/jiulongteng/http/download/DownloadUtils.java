@@ -4,7 +4,11 @@ import androidx.annotation.IntRange;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.jiulongteng.http.download.cause.DownloadException;
+
+import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -111,7 +115,7 @@ public class DownloadUtils {
             }
 
             if (fileName != null && fileName.contains("../")) {
-                throw new DownloadSecurityException("The filename [" + fileName + "] from"
+                throw new DownloadException(DownloadException.DOWNLOAD_SECURITY_ERROR,"The filename [" + fileName + "] from"
                         + " the response is not allowable, because it contains '../', which "
                         + "can raise the directory traversal vulnerability");
             }
@@ -280,6 +284,24 @@ public class DownloadUtils {
         }
 
         return responseFileName;
+    }
+
+
+    public static void createFile(File file, long length) throws IOException{
+        RandomAccessFile r = null;
+        try {
+            r = new RandomAccessFile(file, "rw");
+            r.setLength(length);
+        } finally{
+            if (r != null) {
+                try {
+                    r.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
     }
 
 }

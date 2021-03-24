@@ -2,6 +2,8 @@ package com.jiulongteng.http.download;
 
 import androidx.annotation.NonNull;
 
+import com.jiulongteng.http.download.cause.DownloadException;
+
 import java.io.IOException;
 import java.net.HttpURLConnection;
 
