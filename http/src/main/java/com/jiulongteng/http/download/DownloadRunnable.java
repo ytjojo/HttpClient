@@ -105,7 +105,6 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
             Util.i(TAG,"   parkThread");
             parkThread();
 
-
         } catch (Exception e){
             task.setThrowable(e);
         }

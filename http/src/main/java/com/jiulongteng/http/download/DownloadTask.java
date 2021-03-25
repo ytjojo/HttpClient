@@ -7,7 +7,6 @@ import androidx.annotation.IntRange;
 import androidx.annotation.Nullable;
 
 import com.jiulongteng.http.download.cause.EndCause;
-import com.jiulongteng.http.download.db.Dao;
 import com.jiulongteng.http.download.db.DownloadCache;
 import com.jiulongteng.http.download.dispatcher.CallbackDispatcher;
 import com.jiulongteng.http.download.entry.BlockInfo;
@@ -16,9 +15,7 @@ import com.jiulongteng.http.util.CollectionUtils;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.concurrent.CancellationException;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -38,7 +35,7 @@ public class DownloadTask {
             Util.threadFactory("OkDownload Block", false));
     private File mFile;
 
-    private AtomicBoolean isStoped;
+    final private AtomicBoolean isStopped;
     OkHttpClient client;
     Request rawRequest;
     String fileName;
@@ -85,13 +82,16 @@ public class DownloadTask {
 
         this.client = client;
         this.rawRequest = request;
-        this.isStoped = new AtomicBoolean(false);
+        this.isStopped = new AtomicBoolean(false);
         this.connectionCount = connectionCount;
     }
 
-
-    public void execute() {
+    private void reset(){
+        setIsStopped(false);
         causeThrowable = null;
+    }
+    public void execute() {
+        reset();
         getCallbackDispatcher().taskStart(this);
         pretreatment = new DownloadPretreatment(this);
         try {
@@ -101,7 +101,7 @@ public class DownloadTask {
             return;
         }
         DownloadCache.getInstance().updateDownloadInfo(info);
-        if (isStoped.get()) {
+        if (isStopped.get()) {
             dispatchCancel();
             return;
         }
@@ -202,8 +202,8 @@ public class DownloadTask {
     }
 
 
-    public void setIsStoped(boolean isStoped) {
-        this.isStoped.set(isStoped);
+    public void setIsStopped(boolean isStopped) {
+        this.isStopped.set(isStopped);
     }
 
 
@@ -304,7 +304,7 @@ public class DownloadTask {
     }
 
     public boolean isStoped() {
-        return isStoped.get();
+        return isStopped.get();
     }
 
     public void dispatchCancel() {
@@ -359,7 +359,7 @@ public class DownloadTask {
 
     public void stop(){
         if(taskStatus.compareAndSet(DownloadCache.RUNNING,DownloadCache.STOP)){
-            setIsStoped(true);
+            setIsStopped(true);
             if(!CollectionUtils.isEmpty(getDownloadRunnables())){
                 for( AbstractDownloadRunnable runnable: getDownloadRunnables()){
                     runnable.setIsReadByteFinished(true);
