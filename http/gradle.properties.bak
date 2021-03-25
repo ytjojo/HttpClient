@@ -42,5 +42,5 @@ POM_DEVELOPER_EMAIL=ytjojo@163.com
 
 
 
-signing.secretKeyRingFile=C:/Users/Administrator/.gnupg/secring.gpg
+
 
