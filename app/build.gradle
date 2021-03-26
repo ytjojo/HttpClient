@@ -134,7 +134,7 @@ dependencies {
 
 }
 configurations {
-    androidTestCompile.exclude group: 'com.android.support', module: 'support-v4'
+    androidTestImplementation.exclude group: 'com.android.support', module: 'support-v4'
 }
 def propFile = project.rootProject.file('signing.properties');
 if (propFile.exists()) {

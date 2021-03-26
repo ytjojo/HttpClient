@@ -20,26 +20,45 @@ apply plugin: 'signing'
 version = VERSION_NAME
 group = GROUP
 
+def localProperties = new Properties()
+File file = rootProject.file('local.properties')
+if (file.exists()) {
+  //加载资源
+  InputStream inputStream = file.newDataInputStream()
+  localProperties.load(inputStream)
+  try{
+    inputStream.close()
+  }catch(Exception e){
+
+  }
+  rootProject.ext.localProperties = localProperties
+
+}
+
+println(getReleaseRepositoryUrl())
+
+
+
 def isReleaseBuild() {
   return VERSION_NAME.contains("SNAPSHOT") == false
 }
 
 def getReleaseRepositoryUrl() {
-  return hasProperty('RELEASE_REPOSITORY_URL') ? RELEASE_REPOSITORY_URL :
-          "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+  return rootProject.ext.localProperties.getProperty("RELEASE_REPOSITORY_URL",
+          "https://oss.sonatype.org/service/local/staging/deploy/maven2/")
 }
 
 def getSnapshotRepositoryUrl() {
-  return hasProperty('SNAPSHOT_REPOSITORY_URL') ? SNAPSHOT_REPOSITORY_URL :
-          "https://oss.sonatype.org/content/repositories/snapshots/"
+  return rootProject.ext.localProperties.getProperty('SNAPSHOT_REPOSITORY_URL',
+          "https://oss.sonatype.org/content/repositories/snapshots/")
 }
 
 def getRepositoryUsername() {
-  return hasProperty('SONATYPE_NEXUS_USERNAME') ? SONATYPE_NEXUS_USERNAME : ""
+  return rootProject.ext.localProperties.getProperty('SONATYPE_NEXUS_USERNAME', "")
 }
 
 def getRepositoryPassword() {
-  return hasProperty('SONATYPE_NEXUS_PASSWORD') ? SONATYPE_NEXUS_PASSWORD : ""
+  return rootProject.ext.localProperties.getProperty('SONATYPE_NEXUS_PASSWORD', "")
 }
 
 
@@ -53,10 +72,10 @@ afterEvaluate { project ->
         pom.artifactId = POM_ARTIFACT_ID
         pom.version = VERSION_NAME
 
-        repository(url: getReleaseRepositoryUrl()) {
+        repository(url: uri(getReleaseRepositoryUrl())) {
           authentication(userName: getRepositoryUsername(), password: getRepositoryPassword())
         }
-        snapshotRepository(url: getSnapshotRepositoryUrl()) {
+        snapshotRepository(url:uri( getSnapshotRepositoryUrl())) {
           authentication(userName: getRepositoryUsername(), password: getRepositoryPassword())
         }
 
@@ -90,6 +109,8 @@ afterEvaluate { project ->
         pom.whenConfigured { pomp ->
 
           pomp.dependencies.forEach { dep ->
+
+            println(dep.getVersion()+"  id " + dep.getArtifactId())
             if (dep.getVersion() == "unspecified") {
               println("--modify the dependenies module in pom.xml--->>" + dep.getArtifactId())
               dep.setGroupId(GROUP)
@@ -97,18 +118,18 @@ afterEvaluate { project ->
               //pomp.dependencies.remove(dep)
               def targetProject = rootProject.findProject( dep.getArtifactId())
               if(targetProject != null){
-                def localProperties = new Properties()
-                File file = targetProject.file('gradle.properties')
-                if (file.exists()) {
+                def projectProperties = new Properties()
+                File propertiesFile = targetProject.file('gradle.properties')
+                if (propertiesFile.exists()) {
                   //加载资源
-                  InputStream inputStream = file.newDataInputStream()
-                  localProperties.load(inputStream)
+                  InputStream inputStream = propertiesFile.newDataInputStream()
+                  projectProperties.load(inputStream)
                   inputStream.close()
-                  if(localProperties.containsKey("GROUP")){
-                    dep.setGroupId(localProperties.get("GROUP"))
+                  if(projectProperties.containsKey("GROUP")){
+                    dep.setGroupId(projectProperties.get("GROUP"))
                   }
-                  if(localProperties.containsKey("VERSION_NAME")){
-                    dep.setVersion(localProperties.get("VERSION_NAME"))
+                  if(projectProperties.containsKey("VERSION_NAME")){
+                    dep.setVersion(projectProperties.get("VERSION_NAME"))
                   }
                 }
               }

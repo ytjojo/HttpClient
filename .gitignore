@@ -4,7 +4,7 @@
 
 # with others. This method can be used for locally-generated files that you
 
-# don¡¯t expect other users to generate, like files created by your editor.
+# donï¿½ï¿½t expect other users to generate, like files created by your editor.
 
 .DS_Store
 /build
@@ -91,3 +91,4 @@ local.properties
 
 # Log Files
 *.log
+/repo
