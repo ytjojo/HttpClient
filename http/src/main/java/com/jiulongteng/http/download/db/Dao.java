@@ -130,6 +130,7 @@ public class Dao implements BreakpointStore {
     /**
      * 保存 下载的具体信息
      */
+    @Override
     public void saveBlockInfo(List<BlockInfo> blockInfo, BreakpointInfo breakpointInfo) {
         SQLiteDatabase database = getConnection();
         database.beginTransaction();
@@ -142,7 +143,7 @@ public class Dao implements BreakpointStore {
                         breakpointInfo.getId()};
                 database.execSQL(sql, bindArgs);
             }
-            Dao.getInstance().getBlockInfo(breakpointInfo);
+            Dao.getInstance().loadBlockInfo(breakpointInfo);
             database.setTransactionSuccessful();
         } catch (Exception e) {
             e.printStackTrace();
@@ -155,7 +156,8 @@ public class Dao implements BreakpointStore {
     /**
      * 得到下载进度信息
      */
-    public List<BlockInfo> getBlockInfo(BreakpointInfo info) {
+    @Override
+    public List<BlockInfo> loadBlockInfo(BreakpointInfo info) {
         List<BlockInfo> list = new ArrayList<BlockInfo>();
         SQLiteDatabase database = getConnection();
         Cursor cursor = null;
@@ -183,7 +185,7 @@ public class Dao implements BreakpointStore {
     /**
      * 得到下载进度信息
      */
-    public List<BreakpointInfo> getAllDownloadInfo() {
+    public List<BreakpointInfo> loadAllDownloadInfo() {
         List<BreakpointInfo> list = new ArrayList<BreakpointInfo>();
         HashMap<Integer, ArrayList<BlockInfo>> allBlocks = new HashMap<>();
         SQLiteDatabase database = getConnection();
@@ -267,10 +269,10 @@ public class Dao implements BreakpointStore {
         SQLiteDatabase database = getConnection();
         Cursor cursor = null;
         try {
-            String sql = "insert into download_info(url,etag,parent_dir_path, file_name, ask_only_parent_path, chunked) values (?,?,?,?,?)";
+            String sql = "insert into download_info(url,etag,parent_dir_path, file_name, ask_only_parent_path, chunked) values (?,?,?,?,?,?)";
             Object[] bindArgs = {info.getUrl(), info.getEtag(),
                     info.getParentFile().getAbsoluteFile(), info.getFilename(),
-                    info.getFilename(), info.isTaskOnlyProvidedParentPath() ? 1 : 0, info.isChunked() ? 1 : 0};
+                     info.isTaskOnlyProvidedParentPath() ? 1 : 0, info.isChunked() ? 1 : 0};
             database.execSQL(sql, bindArgs);
             String selectSQL = "select _id from download_info where url=?";
             cursor = database.rawQuery(selectSQL, new String[]{info.getUrl()});
@@ -292,7 +294,7 @@ public class Dao implements BreakpointStore {
     }
 
 
-    public BreakpointInfo getDownloadInfo(String url) {
+    public BreakpointInfo loadDownloadInfo(String url) {
         SQLiteDatabase database = getConnection();
         Cursor cursor = null;
         try {
@@ -317,7 +319,7 @@ public class Dao implements BreakpointStore {
     public void updateDownloadInfo(BreakpointInfo info) {
         SQLiteDatabase database = getConnection();
         try {
-            String sql = "update downlaod_info set file_name=?,etag=?,chunked=? where _id =?";
+            String sql = "update download_info set file_name=?,etag=?,chunked=? where _id =?";
             Object[] bindArgs = {info.getFilename(), info.getEtag(), info.isChunked() ? 1 : 0, info.getId()};
             database.execSQL(sql, bindArgs);
         } catch (Exception e) {
@@ -326,4 +328,6 @@ public class Dao implements BreakpointStore {
 
         }
     }
+
+
 }  

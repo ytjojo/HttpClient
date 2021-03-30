@@ -156,7 +156,7 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
 
 
     public void inspect(Response response) throws IOException {
-        System.out.println( getIndex() + "  response" +response.body().contentLength() +  " contentLength " +DownloadUtils.getExactContentLengthRangeFrom0(response.headers()) + " exactContentLengthRange " + blockInfo.getContentLength());
+        Util.d(TAG, getIndex() + "  response" +response.body().contentLength() +  " contentLength " +DownloadUtils.getExactContentLengthRangeFrom0(response.headers()) + " exactContentLengthRange " + blockInfo.getContentLength());
         final BlockInfo blockInfo = getBlockInfo();
         final int code = response.code();
         final String newEtag = response.header(Util.ETAG);

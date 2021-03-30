@@ -8,6 +8,7 @@ import androidx.annotation.Nullable;
 import com.jiulongteng.http.download.DownloadListener;
 import com.jiulongteng.http.download.DownloadTask;
 import com.jiulongteng.http.download.cause.EndCause;
+import com.jiulongteng.http.download.db.DownloadCache;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -112,7 +113,7 @@ public class CallbackDispatcher implements DownloadListener {
     }
 
     public void fetchProgress(@NonNull DownloadTask task) {
-        if (isFetchProcessMoment() || task.isSuccess()) {
+        if (isFetchProcessMoment() || task.getTaskStatus() == DownloadCache.COMPLETE) {
             final long lastTime = lastCallbackProcessTime.get();
             final long currentTime = System.currentTimeMillis();
 
@@ -135,7 +136,7 @@ public class CallbackDispatcher implements DownloadListener {
 
     public boolean isFetchProcessMoment() {
 
-        final long minInterval = 100;
+        final long minInterval = DownloadCache.getInstance().getCallbackInterval();
         final long now = System.currentTimeMillis();
         return minInterval <= 0
                 || now - getLastCallbackProcessTime() >= minInterval;

@@ -18,20 +18,21 @@ public class FlushRunnable implements Runnable {
     private static final ExecutorService FILE_IO_EXECUTOR = new ThreadPoolExecutor(0,
             Integer.MAX_VALUE,
             60, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(),
-            Util.threadFactory("OkDownload file io", false));
+            Util.threadFactory("Download file io", false));
 
     private DownloadTask task;
-    ConcurrentHashMap<Integer,AbstractDownloadRunnable> downloadRunnableMap = new ConcurrentHashMap<>();
+    ConcurrentHashMap<Integer, AbstractDownloadRunnable> downloadRunnableMap = new ConcurrentHashMap<>();
     LinkedBlockingQueue<Runnable> blockingQueue = new LinkedBlockingQueue<>();
-    int finishSize=0;
-    AtomicReference<Thread> parkThreadRef =new AtomicReference(null);
+    int finishSize = 0;
+    AtomicReference<Thread> parkThreadRef = new AtomicReference(null);
 
     private volatile Future syncFuture;
 
     AtomicBoolean isDone = new AtomicBoolean(false);
 
     Runnable finishRunnable;
-    public FlushRunnable(DownloadTask task,Runnable finishRunnable) {
+
+    public FlushRunnable(DownloadTask task, Runnable finishRunnable) {
         this.task = task;
         this.finishRunnable = finishRunnable;
     }
@@ -40,14 +41,14 @@ public class FlushRunnable implements Runnable {
     public void run() {
         flushAll();
         parkThreadRef.set(Thread.currentThread());
-        while (true){
+        while (true) {
             parkThread();
             flushAll();
-            if(task.isStoped()){
-                Util.i(TAG,"   loop " + finishSize);
+            if (task.isStoped()) {
+                Util.i(TAG, "   loop " + finishSize);
             }
-            if(task.getRunnableSize() == finishSize){
-                if(finishRunnable!= null){
+            if (task.getRunnableSize() == finishSize) {
+                if (finishRunnable != null) {
                     FILE_IO_EXECUTOR.submit(finishRunnable);
                 }
                 Util.i(TAG, " finishSize ");
@@ -56,44 +57,44 @@ public class FlushRunnable implements Runnable {
         }
     }
 
-    private void wakeup(){
-        if(syncFuture == null){
-            synchronized (this){
-                if(syncFuture == null){
+    private void wakeup() {
+        if (syncFuture == null) {
+            synchronized (this) {
+                if (syncFuture == null) {
                     syncFuture = executeSyncRunnableAsync();
                 }
             }
         }
         Thread thread = parkThreadRef.get();
-        if(thread != null){
+        if (thread != null) {
             unparkThread(thread);
 
         }
 
     }
 
-    private Future executeSyncRunnableAsync(){
+    private Future executeSyncRunnableAsync() {
         return FILE_IO_EXECUTOR.submit(this);
     }
 
-    private void flushAll(){
+    private void flushAll() {
 
-        if(isDone.get()){
-            while (true){
+        if (isDone.get()) {
+            while (true) {
                 Runnable runnable = blockingQueue.poll();
-                if(runnable != null){
+                if (runnable != null) {
                     runnable.run();
                 }
 
-                if(task.getRunnableSize() == finishSize){
+                if (task.getRunnableSize() == finishSize) {
                     break;
-                }else {
+                } else {
                 }
             }
-        }else {
+        } else {
             for (int i = 0; i < task.getRunnableSize(); i++) {
                 AbstractDownloadRunnable downloadRunnable = downloadRunnableMap.remove(i);
-                if(downloadRunnable != null){
+                if (downloadRunnable != null) {
                     try {
                         downloadRunnable.flush();
                     } catch (IOException e) {
@@ -106,27 +107,27 @@ public class FlushRunnable implements Runnable {
         }
 
 
-
     }
-    public void flush(AbstractDownloadRunnable downloadRunnable){
-        downloadRunnableMap.put(downloadRunnable.getIndex(),downloadRunnable);
+
+    public void flush(AbstractDownloadRunnable downloadRunnable) {
+        downloadRunnableMap.put(downloadRunnable.getIndex(), downloadRunnable);
         wakeup();
     }
 
-    public void done(AbstractDownloadRunnable downloadRunnable){
+    public void done(AbstractDownloadRunnable downloadRunnable) {
         isDone.set(true);
         blockingQueue.offer(new Runnable() {
             @Override
             public void run() {
-                try{
+                try {
                     downloadRunnable.flush();
 
-                }catch (IOException e){
+                } catch (IOException e) {
 
-                }finally {
+                } finally {
                     finishSize++;
                     downloadRunnable.unPark();
-                    Util.i(TAG,"  finishSize = "+finishSize + "  done " + downloadRunnable.getIndex());
+                    Util.i(TAG, "  finishSize = " + finishSize + "  done " + downloadRunnable.getIndex());
                 }
 
             }

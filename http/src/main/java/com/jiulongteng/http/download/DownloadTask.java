@@ -15,6 +15,7 @@ import com.jiulongteng.http.util.CollectionUtils;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Objects;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -67,8 +68,8 @@ public class DownloadTask {
 
     DownloadListener downloadListener;
     CallbackDispatcher callbackDispatcher;
-    AtomicInteger taskStatus =new AtomicInteger(DownloadCache.PENDING);
-    AtomicBoolean isSuccess = new AtomicBoolean(false);
+    AtomicInteger taskStatus = new AtomicInteger(DownloadCache.PENDING);
+
     public DownloadTask(File file, OkHttpClient client, Request request, Integer connectionCount) {
 
         if (file.isDirectory()) {
@@ -86,10 +87,11 @@ public class DownloadTask {
         this.connectionCount = connectionCount;
     }
 
-    private void reset(){
+    private void reset() {
         setIsStopped(false);
         causeThrowable = null;
     }
+
     public void execute() {
         reset();
         getCallbackDispatcher().taskStart(this);
@@ -105,31 +107,49 @@ public class DownloadTask {
             dispatchCancel();
             return;
         }
+
+        if(DownloadCache.getInstance().isFileConflictAfterRun(this)){
+            getCallbackDispatcher().taskEnd(this,EndCause.SAME_FILE_BUSY,null);
+            return;
+        }
+
         ArrayList<AbstractDownloadRunnable> runnables = prepareSubTask();
         downloadRunnables = new ArrayList<>();
         downloadRunnables.addAll(runnables);
         flushRunnable = new FlushRunnable(this, finishRunnable);
 
-        getCallbackDispatcher().fetchStart(this, getInfo().getTotalOffset() > 0 );
+        getCallbackDispatcher().fetchStart(this, getInfo().getTotalOffset() > 0);
         try {
             startSubTask(runnables);
         } catch (InterruptedException e) {
 
         }
-        if(getInfo().getTotalOffset() == getInfo().getTotalLength()){
+        if (getInfo().getTotalOffset() == getInfo().getTotalLength()) {
             DownloadCache.getInstance().deleteInfo(info.getId());
-            DownloadCache.getInstance().onComplete(this,true);
-            getCallbackDispatcher().taskEnd(this, EndCause.COMPLETED,null);
-        }else {
-            if(causeThrowable != null){
+            DownloadCache.getInstance().onComplete(this, true);
+            getCallbackDispatcher().taskEnd(this, EndCause.COMPLETED, null);
+        } else {
+            if (causeThrowable != null) {
                 dispatchError(causeThrowable);
-            }else {
-               dispatchCancel();
+            } else {
+                dispatchCancel();
             }
 
         }
 
 
+    }
+
+    public void enqueue() {
+        DownloadCache.getInstance().enqueueTask(this);
+    }
+
+    public boolean reStart(boolean enqueueWhenFull) {
+        int taskStatus = getTaskStatus();
+        if (taskStatus != DownloadCache.RUNNING) {
+            return DownloadCache.getInstance().submitTask(this, enqueueWhenFull);
+        }
+        return false;
     }
 
     public void setFinishRunnable(Runnable runnable) {
@@ -297,7 +317,6 @@ public class DownloadTask {
     }
 
 
-
     @Nullable
     public Integer getConnectionCount() {
         return connectionCount;
@@ -308,13 +327,13 @@ public class DownloadTask {
     }
 
     public void dispatchCancel() {
-        DownloadCache.getInstance().onStop(this,false);
-        getCallbackDispatcher().taskEnd(this, EndCause.CANCELED,null);
+        DownloadCache.getInstance().onStop(this, false);
+        getCallbackDispatcher().taskEnd(this, EndCause.CANCELED, null);
     }
 
     public void dispatchError(Throwable throwable) {
-        DownloadCache.getInstance().onStop(this,false);
-        getCallbackDispatcher().taskEnd(this, EndCause.ERROR,throwable);
+        DownloadCache.getInstance().onStop(this, false);
+        getCallbackDispatcher().taskEnd(this, EndCause.ERROR, throwable);
     }
 
     public int getRunnableSize() {
@@ -340,8 +359,9 @@ public class DownloadTask {
         this.downloadListener = listener;
         callbackDispatcher = new CallbackDispatcher(uiThread ? new Handler(Looper.getMainLooper()) : null);
     }
-    public void setDownloadListener( DownloadListener listener) {
-        setDownloadListener(true,listener);
+
+    public void setDownloadListener(DownloadListener listener) {
+        setDownloadListener(true, listener);
     }
 
     public CallbackDispatcher getCallbackDispatcher() {
@@ -357,29 +377,46 @@ public class DownloadTask {
     }
 
 
-    public void stop(){
-        if(taskStatus.compareAndSet(DownloadCache.RUNNING,DownloadCache.STOP)){
+    public void stop() {
+        if (taskStatus.compareAndSet(DownloadCache.RUNNING, DownloadCache.STOP)) {
             setIsStopped(true);
-            if(!CollectionUtils.isEmpty(getDownloadRunnables())){
-                for( AbstractDownloadRunnable runnable: getDownloadRunnables()){
+            if (!CollectionUtils.isEmpty(getDownloadRunnables())) {
+                for (AbstractDownloadRunnable runnable : getDownloadRunnables()) {
                     runnable.setIsReadByteFinished(true);
                     runnable.interrupt();
                     getFlushRunnable().done(runnable);
 
                 }
             }
-        }else {
+        } else {
             throw new IllegalStateException(" task allready stoped");
         }
 
 
     }
 
-    public boolean isSuccess() {
-        return isSuccess.get();
-    }
+
 
     public void setThrowable(Exception e) {
         this.causeThrowable = e;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        DownloadTask that = (DownloadTask) o;
+        if (that.getInfo() != null && this.getInfo() != null && that.getInfo().getId() == this.getInfo().getId()) {
+            return true;
+        }
+        return rawRequest.url().toString().equals(that.rawRequest.url().toString()) &&
+                Objects.equals(fileName, that.fileName) &&
+                parentFile.equals(that.parentFile);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(rawRequest.url().toString(), fileName, parentFile.getAbsolutePath());
     }
 }

@@ -11,7 +11,6 @@ import junit.framework.TestCase;
 import org.junit.Test;
 
 import java.io.File;
-import java.util.concurrent.CountDownLatch;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -88,6 +87,6 @@ public class DownloadTaskTest extends TestCase {
                 System.out.println("taskEnd  stop =" + (System.currentTimeMillis()   - stop)  + "  total = " +  + (System.currentTimeMillis() - start));
             }
         });
-        DownloadCache.getInstance().add(task);
+        DownloadCache.getInstance().enqueueInternal(task);
     }
 }

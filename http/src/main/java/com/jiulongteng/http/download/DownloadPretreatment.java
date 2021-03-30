@@ -30,16 +30,16 @@ public class DownloadPretreatment {
 
     private void restore() {
 
-        BreakpointInfo breakpointInfo = DownloadCache.getInstance().getDownloadInfo(task.getUrl());
+        BreakpointInfo breakpointInfo = DownloadCache.getInstance().loadDownloadInfo(task.getUrl());
         if (breakpointInfo == null) {
             breakpointInfo = new BreakpointInfo(-1, task.getUrl(), null, task.getParentFile(),
                     task.getFilename(), task.isFilenameFromResponse());
             DownloadCache.getInstance().saveDownloadInfo(breakpointInfo);
-            task.setInfo(breakpointInfo);
-        }else {
-            DownloadCache.getInstance().getBlockInfo(breakpointInfo);
 
+        }else {
+            DownloadCache.getInstance().loadBlockInfo(breakpointInfo);
         }
+        task.setInfo(breakpointInfo);
 
 
     }
@@ -62,9 +62,6 @@ public class DownloadPretreatment {
     }
 
     private void localCheck() throws IOException {
-        if(DownloadCache.getInstance().isFileConflictAfterRun(task)){
-            throw new DownloadException(DownloadException.FILE_BUSY_ERROR,"file busy");
-        }
 
         if (resumable) {
             boolean isExists = task.getFile().exists();

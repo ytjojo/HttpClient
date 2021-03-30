@@ -20,5 +20,6 @@ public enum EndCause {
     COMPLETED,
     ERROR,
     CANCELED,
-    SAME_TASK_BUSY
+    SAME_TASK_BUSY,
+    SAME_FILE_BUSY
 }
