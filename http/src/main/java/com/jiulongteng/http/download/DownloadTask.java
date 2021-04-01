@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.internal.platform.Platform;
 
 public class DownloadTask {
 
@@ -67,6 +68,7 @@ public class DownloadTask {
     Throwable causeThrowable;
 
     DownloadListener downloadListener;
+    SpeedListener speedListener;
     CallbackDispatcher callbackDispatcher;
     AtomicInteger taskStatus = new AtomicInteger(DownloadCache.PENDING);
 
@@ -85,6 +87,12 @@ public class DownloadTask {
         this.rawRequest = request;
         this.isStopped = new AtomicBoolean(false);
         this.connectionCount = connectionCount;
+        this.callbackDispatcher = new CallbackDispatcher(DownloadCache.getInstance().isAndroid() ? new Handler(Looper.getMainLooper()) : null);
+
+    }
+
+    public DownloadTask(File file, OkHttpClient client, Request request) {
+        this(file, client, request, null);
     }
 
     private void reset() {
@@ -108,8 +116,8 @@ public class DownloadTask {
             return;
         }
 
-        if(DownloadCache.getInstance().isFileConflictAfterRun(this)){
-            getCallbackDispatcher().taskEnd(this,EndCause.SAME_FILE_BUSY,null);
+        if (DownloadCache.getInstance().isFileConflictAfterRun(this)) {
+            getCallbackDispatcher().taskEnd(this, EndCause.SAME_FILE_BUSY, null);
             return;
         }
 
@@ -166,7 +174,12 @@ public class DownloadTask {
                 continue;
             }
             Util.resetBlockIfDirty(blockInfo);
-            runnables.add(new DownloadRunnable(this, blockInfo, i));
+            if(DownloadCache.getInstance().isAndroid()){
+                runnables.add(new DownloadAndroidRunnable(this, blockInfo, i));
+            }else {
+                runnables.add(new DownloadRunnable(this, blockInfo, i));
+            }
+
         }
         return runnables;
 
@@ -250,6 +263,9 @@ public class DownloadTask {
     public void setFileName(String fileName) {
         this.fileName = fileName;
         this.mFile = new File(parentFile, fileName);
+        if (this.getInfo() != null) {
+            getInfo().setFileName(fileName);
+        }
     }
 
     public void setParentFile(File parentFile) {
@@ -355,13 +371,16 @@ public class DownloadTask {
         return downloadListener;
     }
 
-    public void setDownloadListener(boolean uiThread, DownloadListener listener) {
+    public void setDownloadListener(DownloadListener listener) {
         this.downloadListener = listener;
-        callbackDispatcher = new CallbackDispatcher(uiThread ? new Handler(Looper.getMainLooper()) : null);
+
+    }
+    public void setSpeedListener(SpeedListener listener){
+        speedListener = listener;
     }
 
-    public void setDownloadListener(DownloadListener listener) {
-        setDownloadListener(true, listener);
+    public SpeedListener getSpeedListener() {
+        return speedListener;
     }
 
     public CallbackDispatcher getCallbackDispatcher() {
@@ -396,8 +415,7 @@ public class DownloadTask {
     }
 
 
-
-    public void setThrowable(Exception e) {
+    public void setThrowable(Throwable e) {
         this.causeThrowable = e;
     }
 

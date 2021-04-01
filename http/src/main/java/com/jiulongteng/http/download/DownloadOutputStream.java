@@ -1,12 +1,12 @@
 package com.jiulongteng.http.download;
 
+import java.io.Closeable;
 import java.io.IOException;
 
 
-public interface DownloadOutputStream {
+public interface DownloadOutputStream extends Closeable {
     void write(byte[] b, int off, int len) throws IOException;
 
-    void close() throws IOException;
 
     void flushAndSync() throws IOException;
 

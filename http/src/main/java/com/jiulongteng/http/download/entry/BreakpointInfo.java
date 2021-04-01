@@ -266,4 +266,8 @@ public class BreakpointInfo {
     public List<BlockInfo> getBlockInfoList() {
         return blockInfoList;
     }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
 }

@@ -5,7 +5,9 @@ import android.nfc.Tag;
 import com.jiulongteng.http.download.entry.BlockInfo;
 
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 
 public abstract class AbstractDownloadRunnable implements Runnable {
@@ -15,6 +17,12 @@ public abstract class AbstractDownloadRunnable implements Runnable {
     private Thread currentThread;
     private int index;
     private long contentLength;
+
+    private long bufferMax; //缓冲区允许放置的字节级数据量
+    private AtomicLong bufferedLength;    //缓冲区中未刷入内存的大小即缓冲区写入模式下的起始位置
+
+
+    long readLength;
     private AtomicBoolean  isReadByteFinished = new AtomicBoolean(false);;
 
     public AbstractDownloadRunnable(DownloadTask task, BlockInfo blockInfo, int index) {
@@ -29,7 +37,7 @@ public abstract class AbstractDownloadRunnable implements Runnable {
 
     public abstract void flush() throws IOException;
 
-    public abstract long getBufferedLength();
+
 
     public DownloadTask getTask() {
         return task;
@@ -79,5 +87,36 @@ public abstract class AbstractDownloadRunnable implements Runnable {
             currentThread.interrupt();
         }
 
+    }
+
+    public void setBufferMax(long bufferMax) {
+        this.bufferMax = bufferMax;
+    }
+
+    public long getBufferMax() {
+        return bufferMax;
+    }
+
+    public void setBufferedLength(long bufferedLength) {
+        if(this.bufferedLength == null){
+            this.bufferedLength = new AtomicLong(bufferedLength);
+        }else {
+            this.bufferedLength.set(bufferedLength);
+        }
+    }
+    public long addAndGetBufferedLength(long delta){
+        return bufferedLength.addAndGet(delta);
+    }
+
+
+    public long getBufferedLength() {
+        if(bufferedLength == null){
+            return 0;
+        }
+        return bufferedLength.get();
+    }
+
+    public int getBufferSize(){
+        return 8096;
     }
 }

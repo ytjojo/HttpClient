@@ -4,6 +4,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
+import com.jiulongteng.http.download.Util;
 import com.jiulongteng.http.download.entry.BlockInfo;
 import com.jiulongteng.http.download.entry.BreakpointInfo;
 
@@ -27,7 +28,7 @@ public class Dao implements BreakpointStore {
         instance = new Dao(c);
     }
 
-    private static volatile SQLiteDatabase sDatabase;
+    private static volatile DBHelper sDBHelper;
 
     public static Dao getInstance() {
         if (instance == null) {
@@ -36,27 +37,25 @@ public class Dao implements BreakpointStore {
         return instance;
     }
 
-    private SQLiteDatabase getConnection() {
-        if (sDatabase == null) {
+    private SQLiteDatabase getDatabase() {
+        if (sDBHelper == null) {
             synchronized (Dao.class) {
-                if (sDatabase == null) {
+                if (sDBHelper == null) {
                     try {
-                        sDatabase = new DBHelper(mContext).getWritableDatabase();
+                        sDBHelper = new DBHelper(mContext);
                     } catch (Exception e) {
                     }
                 }
             }
         }
 
-        return sDatabase;
+        return sDBHelper.getWritableDatabase();
     }
 
     public void closeDatabase() {
-
-        if (sDatabase != null && sDatabase.isOpen()) {
+        if (sDBHelper != null && sDBHelper.getWritableDatabase().isOpen()) {
             // Closing database
-            sDatabase.close();
-            sDatabase = null;
+            sDBHelper.getWritableDatabase().close();
         }
     }
 
@@ -64,7 +63,7 @@ public class Dao implements BreakpointStore {
      * 查看数据库中是否有数据
      */
     public boolean isContainBlockInfo(int downloadInfoId) {
-        SQLiteDatabase database = getConnection();
+        SQLiteDatabase database = getDatabase();
         int count = -1;
         Cursor cursor = null;
         try {
@@ -85,7 +84,7 @@ public class Dao implements BreakpointStore {
     }
 
     public int getMaxDownloadId() {
-        SQLiteDatabase database = getConnection();
+        SQLiteDatabase database = getDatabase();
         int id = -1;
         Cursor cursor = null;
         try {
@@ -107,7 +106,7 @@ public class Dao implements BreakpointStore {
 
 
     public boolean isContainDownloadInfo(String url) {
-        SQLiteDatabase database = getConnection();
+        SQLiteDatabase database = getDatabase();
         int count = -1;
         Cursor cursor = null;
         try {
@@ -132,7 +131,7 @@ public class Dao implements BreakpointStore {
      */
     @Override
     public void saveBlockInfo(List<BlockInfo> blockInfo, BreakpointInfo breakpointInfo) {
-        SQLiteDatabase database = getConnection();
+        SQLiteDatabase database = getDatabase();
         database.beginTransaction();
         try {
             database.delete("block_info", "download_info_id=?", new String[]{breakpointInfo.getId() + ""});
@@ -159,7 +158,7 @@ public class Dao implements BreakpointStore {
     @Override
     public List<BlockInfo> loadBlockInfo(BreakpointInfo info) {
         List<BlockInfo> list = new ArrayList<BlockInfo>();
-        SQLiteDatabase database = getConnection();
+        SQLiteDatabase database = getDatabase();
         Cursor cursor = null;
         try {
             String sql = "select _id, start_pos,content_length,current_offset from block_info where download_info_id=?";
@@ -168,6 +167,7 @@ public class Dao implements BreakpointStore {
                 BlockInfo blockInfo = new BlockInfo(cursor.getInt(0),
                         cursor.getLong(1), cursor.getLong(2), cursor.getLong(3));
                 list.add(blockInfo);
+                Util.i("BlockInfo",blockInfo.toString());
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -188,7 +188,7 @@ public class Dao implements BreakpointStore {
     public List<BreakpointInfo> loadAllDownloadInfo() {
         List<BreakpointInfo> list = new ArrayList<BreakpointInfo>();
         HashMap<Integer, ArrayList<BlockInfo>> allBlocks = new HashMap<>();
-        SQLiteDatabase database = getConnection();
+        SQLiteDatabase database = getDatabase();
         Cursor blockCursor = null;
         Cursor breakpointInfoCursor = null;
         try {
@@ -233,8 +233,9 @@ public class Dao implements BreakpointStore {
     /**
      * 更新数据库中的下载信息
      */
+    @Override
     public void updateBlockInfo(int blockInfoId, long currentOffset) {
-        SQLiteDatabase database = getConnection();
+        SQLiteDatabase database = getDatabase();
         try {
             String sql = "update block_info set current_offset=? where _id =?";
             Object[] bindArgs = {currentOffset, blockInfoId};
@@ -251,7 +252,7 @@ public class Dao implements BreakpointStore {
      * 下载完成后删除数据库中的数据
      */
     public void deleteInfo(int downloadInfoId) {
-        SQLiteDatabase database = getConnection();
+        SQLiteDatabase database = getDatabase();
         database.beginTransaction();
         try {
             database.delete("download_info", "_id=?", new String[]{downloadInfoId + ""});
@@ -266,7 +267,7 @@ public class Dao implements BreakpointStore {
     }
 
     public void saveDownloadInfo(BreakpointInfo info) {
-        SQLiteDatabase database = getConnection();
+        SQLiteDatabase database = getDatabase();
         Cursor cursor = null;
         try {
             String sql = "insert into download_info(url,etag,parent_dir_path, file_name, ask_only_parent_path, chunked) values (?,?,?,?,?,?)";
@@ -295,7 +296,7 @@ public class Dao implements BreakpointStore {
 
 
     public BreakpointInfo loadDownloadInfo(String url) {
-        SQLiteDatabase database = getConnection();
+        SQLiteDatabase database = getDatabase();
         Cursor cursor = null;
         try {
             String sql = "select _id, url,etag,parent_dir_path, file_name, ask_only_parent_path from download_info where url=?";
@@ -317,7 +318,7 @@ public class Dao implements BreakpointStore {
 
 
     public void updateDownloadInfo(BreakpointInfo info) {
-        SQLiteDatabase database = getConnection();
+        SQLiteDatabase database = getDatabase();
         try {
             String sql = "update download_info set file_name=?,etag=?,chunked=? where _id =?";
             Object[] bindArgs = {info.getFilename(), info.getEtag(), info.isChunked() ? 1 : 0, info.getId()};

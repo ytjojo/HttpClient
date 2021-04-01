@@ -1,5 +1,7 @@
 package com.jiulongteng.http.download.db;
 
+import android.content.Context;
+
 import androidx.annotation.NonNull;
 
 import com.jiulongteng.http.download.DownloadTask;
@@ -20,6 +22,9 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import okhttp3.internal.platform.Platform;
+
+
 public class DownloadCache implements BreakpointStore {
 
     public static final int PENDING = 0;
@@ -29,10 +34,16 @@ public class DownloadCache implements BreakpointStore {
     volatile ExecutorService executorService;
     private int maxRunningTaskCount = 5;
     private volatile static DownloadCache sInstance;
-    private int callbackInterval = 100;
+    private int progressDispatchInterval = 100;
     private ConcurrentHashMap<String, DownloadTask> allTasks = new ConcurrentHashMap<>();
     private ConcurrentLinkedDeque<DownloadTask> pendingQueue = new ConcurrentLinkedDeque<>();
     private LinkedBlockingQueue<DownloadTask> runningQueue = new LinkedBlockingQueue<>(maxRunningTaskCount);
+
+    private int syncBufferSize = 65536;
+
+    private boolean isAndroid = Platform.isAndroid();
+
+    private static Context sContext;
     private BreakpointStore breakpointStore = new BreakpointStore() {
         @Override
         public void saveBlockInfo(List<BlockInfo> blockInfo, BreakpointInfo breakpointInfo) {
@@ -74,6 +85,15 @@ public class DownloadCache implements BreakpointStore {
             return null;
         }
     };
+
+    public static void setContext(Context context){
+        sContext = context;
+        Dao.init(context);
+        DownloadCache.getInstance().setBreakpointStore(Dao.getInstance());
+    }
+    public static Context getContext(){
+        return sContext;
+    }
 
     public static DownloadCache getInstance() {
         if (sInstance == null) {
@@ -319,12 +339,12 @@ public class DownloadCache implements BreakpointStore {
 
     }
 
-    public void setCallbackInterval(int callbackInterval) {
-        this.callbackInterval = callbackInterval;
+    public void setProgressDispatchInterval(int progressDispatchInterval) {
+        this.progressDispatchInterval = progressDispatchInterval;
     }
 
-    public int getCallbackInterval() {
-        return callbackInterval;
+    public int getProgressDispatchInterval() {
+        return progressDispatchInterval;
     }
 
 
@@ -338,4 +358,15 @@ public class DownloadCache implements BreakpointStore {
         return executorService;
     }
 
+    public void setSyncBufferSize(int syncBufferSize) {
+        this.syncBufferSize = syncBufferSize;
+    }
+
+    public int getSyncBufferSize() {
+        return syncBufferSize;
+    }
+
+    public boolean isAndroid(){
+        return isAndroid;
+    }
 }

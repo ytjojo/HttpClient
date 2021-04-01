@@ -46,8 +46,8 @@ public class MainActivity extends Activity {
                 continueDownload = true;
             }
         });
-        Dao.init(getApplicationContext());
-        DownloadCache.getInstance().setBreakpointStore(Dao.getInstance());
+        DownloadCache.setContext(getApplicationContext());
+
 
     }
 
@@ -56,7 +56,10 @@ public class MainActivity extends Activity {
 
     public void download(){
         if(downloadTask == null){
-            Request request = new Request.Builder().url("http://dldir1.qq.com/weixin/Windows/WeChatSetup.exe")
+//            String url = "http://update.myweimai.com/wemay.apk";
+            String url = "http://dldir1.qq.com/weixin/Windows/WeChatSetup.exe";
+
+            Request request = new Request.Builder().url(url)
                     .build();
             Util.setLogger(new Util.Logger() {
                 @Override
@@ -81,7 +84,7 @@ public class MainActivity extends Activity {
             });
             downloadTask = new DownloadTask(getExternalCacheDir(),new OkHttpClient(),request,5);
 
-            downloadTask.setDownloadListener(true, new DownloadListener() {
+            downloadTask.setDownloadListener(new DownloadListener() {
                 @Override
                 public void taskStart(@androidx.annotation.NonNull DownloadTask task) {
                     Util.i(TAG,"taskStart");
@@ -96,13 +99,13 @@ public class MainActivity extends Activity {
 
                 @Override
                 public void fetchStart(@androidx.annotation.NonNull DownloadTask task, boolean isFromBeginning) {
-                    Util.i(TAG,"fetchStart"+task.getFile().getAbsolutePath() +" getTotalLength " + task.getInfo().getTotalLength());
+                    Util.i(TAG,"fetchStart"+task.getFile().getAbsolutePath() +" totalOffset" + task.getInfo().getTotalOffset()  +" getTotalLength " + task.getInfo().getTotalLength());
                 }
 
                 @Override
-                public void fetchProgress(@androidx.annotation.NonNull DownloadTask task, int currentProgress, long currentSize, long contentLength) {
+                public void fetchProgress(@androidx.annotation.NonNull DownloadTask task, int currentProgress, long currentSize, long contentLength,long speed) {
                     horizontalBar.setProgress(currentProgress);
-                    tvPercent.setText(currentProgress + "%");
+                    tvPercent.setText(currentProgress + "%  currentSize =" + currentSize  + " speed " +speed );
                     Util.i(TAG,"fetchProgress" + currentProgress + " currentSize "+ currentSize + " contentLength " + contentLength);
                     if(!continueDownload && currentProgress > 10){
                         Util.i(TAG,"----------stop");
