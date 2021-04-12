@@ -17,6 +17,7 @@ import com.jiulongteng.http.download.Util;
 import com.jiulongteng.http.download.cause.EndCause;
 import com.jiulongteng.http.download.db.Dao;
 import com.jiulongteng.http.download.db.DownloadCache;
+import com.jiulongteng.http.interceptor.HttpLoggingInterceptor;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -30,7 +31,6 @@ public class MainActivity extends Activity {
 
     DownloadTask downloadTask;
 
-    boolean continueDownload;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -43,7 +43,6 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 download();
-                continueDownload = true;
             }
         });
         DownloadCache.setContext(getApplicationContext());
@@ -56,8 +55,8 @@ public class MainActivity extends Activity {
 
     public void download(){
         if(downloadTask == null){
-//            String url = "http://update.myweimai.com/wemay.apk";
-            String url = "http://dldir1.qq.com/weixin/Windows/WeChatSetup.exe";
+            String url = "http://update.myweimai.com/wemay.apk";
+//            String url = "http://dldir1.qq.com/weixin/Windows/WeChatSetup.exe";
 
             Request request = new Request.Builder().url(url)
                     .build();
@@ -82,7 +81,14 @@ public class MainActivity extends Activity {
                     Log.i(tag ,  msg );
                 }
             });
-            downloadTask = new DownloadTask(getExternalCacheDir(),new OkHttpClient(),request,5);
+            HttpLoggingInterceptor loginter = new HttpLoggingInterceptor(new HttpLoggingInterceptor.Logger() {
+                @Override
+                public void log(String message) {
+                    Util.d("http",message);
+                }
+            });
+            OkHttpClient okHttpClient = new OkHttpClient.Builder().addInterceptor(loginter).build();
+            downloadTask = new DownloadTask(getExternalCacheDir(),okHttpClient,request,5);
 
             downloadTask.setDownloadListener(new DownloadListener() {
                 @Override
@@ -107,12 +113,6 @@ public class MainActivity extends Activity {
                     horizontalBar.setProgress(currentProgress);
                     tvPercent.setText(currentProgress + "%  currentSize =" + currentSize  + " speed " +speed );
                     Util.i(TAG,"fetchProgress" + currentProgress + " currentSize "+ currentSize + " contentLength " + contentLength);
-                    if(!continueDownload && currentProgress > 10){
-                        Util.i(TAG,"----------stop");
-                        task.stop();
-                        stop = System.currentTimeMillis();
-                        Util.i(TAG,"----------after stop");
-                    }
                 }
 
                 @Override

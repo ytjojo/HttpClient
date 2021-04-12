@@ -10,6 +10,7 @@ import com.jiulongteng.http.util.TextUtils;
 import java.io.BufferedInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.util.concurrent.atomic.AtomicLong;
 
 import okhttp3.Request;
@@ -39,8 +40,11 @@ public class DownloadAndroidRunnable extends AbstractDownloadRunnable {
         ResponseBody responseBody = null;
 
         try {
+            if(!DownloadCache.getInstance().isNetPolicyValid()){
+                throw new DownloadException(DownloadException.NETWORK_POLICY_ERROR,"invalid network state");
+            }
             Request rangeRequest = task.getRawRequest().newBuilder().header(Util.RANGE, "bytes=" + blockInfo.getRangeLeft() + "-" + blockInfo.getRangeRight()).build();
-            Util.i(TAG,"Range = bytes=" + blockInfo.getRangeLeft() + "-" + blockInfo.getRangeRight() );
+            Util.i(TAG, "Range = bytes=" + blockInfo.getRangeLeft() + "-" + blockInfo.getRangeRight());
             if (!TextUtils.isEmpty(task.getRedirectLocation())) {
                 rangeRequest = rangeRequest.newBuilder().url(task.getRedirectLocation()).build();
             }
@@ -72,6 +76,9 @@ public class DownloadAndroidRunnable extends AbstractDownloadRunnable {
                     task.getFlushRunnable().flush(this);
                     break;
                 }
+                if(!DownloadCache.getInstance().isNetPolicyValid()){
+                    throw new DownloadException(DownloadException.NETWORK_POLICY_ERROR,"invalid network state");
+                }
 
                 if (getBufferedLength() + byteRead >= getBufferMax()) {
                     task.getFlushRunnable().flush(this);
@@ -102,6 +109,7 @@ public class DownloadAndroidRunnable extends AbstractDownloadRunnable {
             }
             Util.i(TAG, "   parkThread");
             parkThread();
+        } catch (InterruptedIOException e){
 
         } catch (Exception e) {
             task.setThrowable(e);

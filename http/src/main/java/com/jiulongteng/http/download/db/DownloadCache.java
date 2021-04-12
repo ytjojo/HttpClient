@@ -5,6 +5,7 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 
 import com.jiulongteng.http.download.DownloadTask;
+import com.jiulongteng.http.download.IInspectNetPolicy;
 import com.jiulongteng.http.download.Util;
 import com.jiulongteng.http.download.cause.EndCause;
 import com.jiulongteng.http.download.entry.BlockInfo;
@@ -44,6 +45,7 @@ public class DownloadCache implements BreakpointStore {
     private boolean isAndroid = Platform.isAndroid();
 
     private static Context sContext;
+    IInspectNetPolicy inspectNetPolicy;
     private BreakpointStore breakpointStore = new BreakpointStore() {
         @Override
         public void saveBlockInfo(List<BlockInfo> blockInfo, BreakpointInfo breakpointInfo) {
@@ -368,5 +370,20 @@ public class DownloadCache implements BreakpointStore {
 
     public boolean isAndroid(){
         return isAndroid;
+    }
+
+    public IInspectNetPolicy getInspectNetPolicy() {
+        return inspectNetPolicy;
+    }
+
+    public void setInspectNetPolicy(IInspectNetPolicy inspectNetPolicy) {
+        this.inspectNetPolicy = inspectNetPolicy;
+    }
+
+    public boolean isNetPolicyValid(){
+        if(inspectNetPolicy != null){
+            return inspectNetPolicy.isNetPolicyValid();
+        }
+        return true;
     }
 }

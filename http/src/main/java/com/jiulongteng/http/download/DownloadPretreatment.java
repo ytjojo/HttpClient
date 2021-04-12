@@ -52,6 +52,9 @@ public class DownloadPretreatment {
             return;
         }
         task.getCallbackDispatcher().connectTrialStart(task);
+        if(!DownloadCache.getInstance().isNetPolicyValid()){
+            throw new DownloadException(DownloadException.NETWORK_POLICY_ERROR,"invalid network state");
+        }
         executeTrial();
         if (task.isStoped()) {
             task.dispatchCancel();
@@ -137,7 +140,11 @@ public class DownloadPretreatment {
             okhttp3.internal.Util.closeQuietly(response);
         }
         if (isNeedTrialHeadMethod) {
-            task.setInstanceLength(DownloadUtils.trialHeadMethodForInstanceLength(task.getClient(), task.getRawRequest()));
+            Request request = task.getRawRequest();
+            if (!Util.isEmpty(task.getInfo().getEtag())) {
+                request = task.getRawRequest().newBuilder().header(Util.IF_MATCH, task.getInfo().getEtag()).build();
+            }
+            task.setInstanceLength(DownloadUtils.trialHeadMethodForInstanceLength(task.getClient(), request));
         }
         if (TextUtils.isEmpty(task.getFileName())) {
             String fileName = DownloadUtils.determineFilename(task.getResponseFilename(), task.getUrl());
@@ -150,7 +157,7 @@ public class DownloadPretreatment {
         resumable = resumeFailedCause == null;
         task.getInfo().setEtag(task.getResponseEtag());
         if (!isTrialSpecialPass(task.getResponseCode(), task.getInstanceLength(), resumable)
-                && isServerCanceled(task.getResponseCode(), task.getInfo().getTotalOffset() != 0)) {
+                && isServerCanceled(task.getResponseCode(), false )) {
             throw new DownloadException(DownloadException.SERVER_CANCEL_ERROR, "trial exception code = " + task.getResponseCode());
         }
     }
