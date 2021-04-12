@@ -39,7 +39,7 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
 
         ResponseBody responseBody = null;
         try {
-            if(!DownloadCache.getInstance().isNetPolicyValid()){
+            if(!DownloadCache.getInstance().isNetPolicyValid(task)){
                 throw new DownloadException(DownloadException.NETWORK_POLICY_ERROR,"invalid network state");
             }
             Request rangeRequest = task.getRawRequest().newBuilder().header(Util.RANGE, "bytes=" + blockInfo.getRangeLeft() + "-" + blockInfo.getRangeRight()).build();
@@ -73,7 +73,7 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
                     task.getFlushRunnable().flush(this);
                     break;
                 }
-                if(!DownloadCache.getInstance().isNetPolicyValid()){
+                if(!DownloadCache.getInstance().isNetPolicyValid(task)){
                     throw new DownloadException(DownloadException.NETWORK_POLICY_ERROR,"invalid network state");
                 }
 

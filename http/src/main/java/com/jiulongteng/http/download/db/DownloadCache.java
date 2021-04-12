@@ -380,9 +380,9 @@ public class DownloadCache implements BreakpointStore {
         this.inspectNetPolicy = inspectNetPolicy;
     }
 
-    public boolean isNetPolicyValid(){
+    public boolean isNetPolicyValid(DownloadTask task){
         if(inspectNetPolicy != null){
-            return inspectNetPolicy.isNetPolicyValid();
+            return inspectNetPolicy.isNetPolicyValid(task);
         }
         return true;
     }

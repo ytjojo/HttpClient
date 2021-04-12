@@ -52,7 +52,7 @@ public class DownloadPretreatment {
             return;
         }
         task.getCallbackDispatcher().connectTrialStart(task);
-        if(!DownloadCache.getInstance().isNetPolicyValid()){
+        if(!DownloadCache.getInstance().isNetPolicyValid(task)){
             throw new DownloadException(DownloadException.NETWORK_POLICY_ERROR,"invalid network state");
         }
         executeTrial();
