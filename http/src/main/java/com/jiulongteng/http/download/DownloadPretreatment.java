@@ -36,7 +36,7 @@ public class DownloadPretreatment {
                     task.getFilename(), task.isFilenameFromResponse());
             DownloadCache.getInstance().saveDownloadInfo(breakpointInfo);
 
-        }else {
+        } else {
             DownloadCache.getInstance().loadBlockInfo(breakpointInfo);
         }
         task.setInfo(breakpointInfo);
@@ -52,8 +52,8 @@ public class DownloadPretreatment {
             return;
         }
         task.getCallbackDispatcher().connectTrialStart(task);
-        if(!DownloadCache.getInstance().isNetPolicyValid(task)){
-            throw new DownloadException(DownloadException.NETWORK_POLICY_ERROR,"invalid network state");
+        if (!DownloadCache.getInstance().isNetPolicyValid(task)) {
+            throw new DownloadException(DownloadException.NETWORK_POLICY_ERROR, "invalid network state");
         }
         executeTrial();
         if (task.isStoped()) {
@@ -75,7 +75,7 @@ public class DownloadPretreatment {
                     throw new IOException("Delete file failed!");
                 }
                 Util.assembleBlock(task);
-                DownloadCache.getInstance().saveBlockInfo(task.getInfo().getBlockInfoList(),task.getInfo());
+                DownloadCache.getInstance().saveBlockInfo(task.getInfo().getBlockInfoList(), task.getInfo());
 
             } else {
             }
@@ -86,7 +86,7 @@ public class DownloadPretreatment {
                 throw new IOException("Delete file failed!");
             }
             Util.assembleBlock(task);
-            DownloadCache.getInstance().saveBlockInfo(task.getInfo().getBlockInfoList(),task.getInfo());
+            DownloadCache.getInstance().saveBlockInfo(task.getInfo().getBlockInfoList(), task.getInfo());
         }
 
         if (!task.getParentFile().exists()) {
@@ -102,12 +102,12 @@ public class DownloadPretreatment {
             final File file = task.getFile();
             final long requireSpace = totalLength - file.length();
             if (requireSpace > 0) {
-                StatFs statFs =  new StatFs(file.getAbsolutePath()) ;
+                StatFs statFs = new StatFs(file.getAbsolutePath());
                 final long freeSpace = Util.getFreeSpaceBytes(statFs);
                 if (freeSpace < requireSpace) {
                     throw new DownloadException(DownloadException.PROTOCOL_ERROR, "There is Free space less than Require space: " + freeSpace + " < " + requireSpace);
                 }
-                DownloadUtils.createFile(file,totalLength);
+                DownloadUtils.createFile(file, totalLength);
             }
         } else {
         }
@@ -117,9 +117,11 @@ public class DownloadPretreatment {
 
         boolean isNeedTrialHeadMethod;
         Response response = null;
+        boolean isEtagRequest = false;
         try {
             Request request = task.getRawRequest().newBuilder().header(Util.RANGE, "bytes=0-0").build();
             if (!Util.isEmpty(task.getInfo().getEtag())) {
+                isEtagRequest = true;
                 request = task.getRawRequest().newBuilder().header(Util.IF_MATCH, task.getInfo().getEtag()).build();
             }
             response = task.getClient().newCall(request).execute();
@@ -127,6 +129,7 @@ public class DownloadPretreatment {
             task.setResponseCode(response.code());
             task.setResponseEtag(headers.get(Util.ETAG));
             task.getInfo().setChunked(isChunked());
+            task.getInfo().setMd5Code(headers.get(Util.CONTENT_MD5));
             task.setAcceptRange(DownloadUtils.isAcceptRange(headers, response.code()));
             task.setInstanceLength(DownloadUtils.findInstanceLength(response.headers()));
             task.setResponseEtag(DownloadUtils.findEtag(headers));
@@ -157,7 +160,7 @@ public class DownloadPretreatment {
         resumable = resumeFailedCause == null;
         task.getInfo().setEtag(task.getResponseEtag());
         if (!isTrialSpecialPass(task.getResponseCode(), task.getInstanceLength(), resumable)
-                && isServerCanceled(task.getResponseCode(), false )) {
+                && isServerCanceled(task.getResponseCode(), !isEtagRequest)) {
             throw new DownloadException(DownloadException.SERVER_CANCEL_ERROR, "trial exception code = " + task.getResponseCode());
         }
     }

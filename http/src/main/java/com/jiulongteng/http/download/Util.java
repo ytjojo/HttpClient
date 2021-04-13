@@ -40,6 +40,10 @@ public class Util {
     public static final String IF_MATCH = "If-Match";
     public static final String USER_AGENT = "User-Agent";
 
+    public static final String CONTENT_MD5 = "Content-MD5";
+
+    public static final String CONTENT_TYPE ="Content-Type";
+
     // response header fields.
     public static final String CONTENT_LENGTH = "Content-Length";
     public static final String CONTENT_RANGE = "Content-Range";

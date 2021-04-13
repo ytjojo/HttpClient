@@ -35,7 +35,7 @@ public class DownloadCache implements BreakpointStore {
     volatile ExecutorService executorService;
     private int maxRunningTaskCount = 5;
     private volatile static DownloadCache sInstance;
-    private int progressDispatchInterval = 100;
+    private int progressDispatchInterval = 300;
     private ConcurrentHashMap<String, DownloadTask> allTasks = new ConcurrentHashMap<>();
     private ConcurrentLinkedDeque<DownloadTask> pendingQueue = new ConcurrentLinkedDeque<>();
     private LinkedBlockingQueue<DownloadTask> runningQueue = new LinkedBlockingQueue<>(maxRunningTaskCount);
