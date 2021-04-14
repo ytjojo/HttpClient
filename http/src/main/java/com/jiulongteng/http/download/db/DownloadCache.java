@@ -3,7 +3,9 @@ package com.jiulongteng.http.download.db;
 import android.content.Context;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
+import com.jiulongteng.http.download.DownloadPostTreatment;
 import com.jiulongteng.http.download.DownloadTask;
 import com.jiulongteng.http.download.IInspectNetPolicy;
 import com.jiulongteng.http.download.Util;
@@ -88,12 +90,13 @@ public class DownloadCache implements BreakpointStore {
         }
     };
 
-    public static void setContext(Context context){
+    public static void setContext(Context context) {
         sContext = context;
         Dao.init(context);
         DownloadCache.getInstance().setBreakpointStore(Dao.getInstance());
     }
-    public static Context getContext(){
+
+    public static Context getContext() {
         return sContext;
     }
 
@@ -132,7 +135,6 @@ public class DownloadCache implements BreakpointStore {
                 startTaskInternal(task);
             }
         } else {
-
             ArrayList<DownloadTask> pendingList = new ArrayList<>();
             pendingList.addAll(pendingQueue);
             ArrayList<DownloadTask> runningList = new ArrayList<>();
@@ -161,7 +163,7 @@ public class DownloadCache implements BreakpointStore {
         return false;
     }
 
-    public boolean submitTask(DownloadTask task, boolean enqueueWhenFull) {
+    public boolean submitTask(DownloadTask task) {
         if (allTasks.containsKey(task.getUrl())) {
             if (runningQueue.offer(task)) {
                 getExecutorService().execute(new Runnable() {
@@ -172,9 +174,8 @@ public class DownloadCache implements BreakpointStore {
                 });
                 return true;
             } else {
-                if (enqueueWhenFull) {
-                    pendingQueue.offer(task);
-                }
+                pendingQueue.offer(task);
+                return true;
             }
         }
         return false;
@@ -228,7 +229,7 @@ public class DownloadCache implements BreakpointStore {
         }
     }
 
-    public void onStopAllTasks() {
+    public void stopAllTasks() {
         if (runningQueue.size() == 0) {
             return;
         }
@@ -243,7 +244,14 @@ public class DownloadCache implements BreakpointStore {
     }
 
     public void remove(DownloadTask task, boolean deleteFile) {
-        if (runningQueue.contains(task)) {
+        if (task.getTaskStatus() == RUNNING) {
+            task.setPostTreatment(new DownloadPostTreatment() {
+                @Override
+                public void onEnd(DownloadTask task, @NonNull EndCause cause, @Nullable Throwable realCause) {
+                    remove(task, deleteFile);
+                }
+            });
+            task.stop();
             return;
         }
 
@@ -264,7 +272,15 @@ public class DownloadCache implements BreakpointStore {
     }
 
     public void removeAll(boolean deleteFile) {
-
+        stopAllTasks();
+        ArrayList<DownloadTask> tasks = new ArrayList<>();
+        tasks.addAll(allTasks.values());
+        runningQueue.clear();
+        pendingQueue.clear();
+        allTasks.clear();
+        for (DownloadTask task : tasks) {
+            remove(task, deleteFile);
+        }
     }
 
     public void setMaxRunningTaskCount(int maxRunningTaskCount) {
@@ -368,7 +384,7 @@ public class DownloadCache implements BreakpointStore {
         return syncBufferSize;
     }
 
-    public boolean isAndroid(){
+    public boolean isAndroid() {
         return isAndroid;
     }
 
@@ -380,8 +396,8 @@ public class DownloadCache implements BreakpointStore {
         this.inspectNetPolicy = inspectNetPolicy;
     }
 
-    public boolean isNetPolicyValid(DownloadTask task){
-        if(inspectNetPolicy != null){
+    public boolean isNetPolicyValid(DownloadTask task) {
+        if (inspectNetPolicy != null) {
             return inspectNetPolicy.isNetPolicyValid(task);
         }
         return true;

@@ -14,8 +14,6 @@ import com.jiulongteng.http.download.db.DownloadCache;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import okhttp3.internal.platform.Platform;
-
 public class CallbackDispatcher implements DownloadListener {
     private static final String TAG = "CallbackDispatcher";
 
@@ -137,7 +135,7 @@ public class CallbackDispatcher implements DownloadListener {
             long increaseBytes = offset - lastOffset.get();
             long speed = (increaseBytes * 1000L / timeCost);
 
-            dispatchSpeed(task,increaseBytes);
+            dispatchSpeed(task, increaseBytes);
             this.fetchProgress(task, currentProgress, offset, contentLength, speed);
             lastOffset.set(offset);
             lastCallbackProcessTime.set(currentTime);
@@ -148,17 +146,17 @@ public class CallbackDispatcher implements DownloadListener {
     private void dispatchSpeed(final DownloadTask task, final long increaseBytes) {
         if (task.getSpeedListener() != null) {
 
-            if(uiHandler != null){
+            if (uiHandler != null) {
                 uiHandler.post(new Runnable() {
                     @Override
                     public void run() {
                         speedCalculator.downloading(increaseBytes);
-                        task.getSpeedListener().onProgress(speedCalculator);
+                        task.getSpeedListener().onProgress(task, speedCalculator);
                     }
                 });
-            }else {
+            } else {
                 speedCalculator.downloading(increaseBytes);
-                task.getSpeedListener().onProgress(speedCalculator);
+                task.getSpeedListener().onProgress(task, speedCalculator);
             }
 
         }

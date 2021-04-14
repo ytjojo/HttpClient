@@ -4,6 +4,7 @@ import android.os.Handler;
 import android.os.Looper;
 
 import androidx.annotation.IntRange;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.jiulongteng.http.download.cause.EndCause;
@@ -30,6 +31,9 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.internal.platform.Platform;
 
+/**
+ * 单个下载任务控制类
+ */
 public class DownloadTask {
 
     private static final ExecutorService EXECUTOR = new ThreadPoolExecutor(0, Integer.MAX_VALUE,
@@ -57,6 +61,7 @@ public class DownloadTask {
     private BreakpointInfo info;
     private boolean isFilenameFromResponse;
     DownloadPretreatment pretreatment;
+    DownloadPostTreatment postTreatment;
 
     @Nullable
     private final Integer connectionCount;
@@ -100,6 +105,10 @@ public class DownloadTask {
         causeThrowable = null;
     }
 
+    /**
+     *  下载前预处理
+     *  启动多线程下载
+     */
     public void execute() {
         reset();
         getCallbackDispatcher().taskStart(this);
@@ -133,37 +142,48 @@ public class DownloadTask {
 
         }
         if (getInfo().getTotalOffset() == getInfo().getTotalLength()) {
-            DownloadCache.getInstance().deleteInfo(info.getId());
-            DownloadCache.getInstance().onComplete(this, true);
-            getCallbackDispatcher().taskEnd(this, EndCause.COMPLETED, null);
+           dispatchComplete();
         } else {
             if (causeThrowable != null) {
                 dispatchError(causeThrowable);
             } else {
                 dispatchCancel();
             }
-
         }
-
-
     }
 
+    /**
+     * 添加进下载队列
+     * 按添加顺序启动下载
+     */
     public void enqueue() {
         DownloadCache.getInstance().enqueueTask(this);
     }
 
-    public boolean reStart(boolean enqueueWhenFull) {
+    /**
+     *  对暂停或者结束的任务重新开始加入队列下载
+     * @return
+     */
+    public boolean reStart() {
         int taskStatus = getTaskStatus();
-        if (taskStatus != DownloadCache.RUNNING) {
-            return DownloadCache.getInstance().submitTask(this, enqueueWhenFull);
+        if (taskStatus == DownloadCache.STOP) {
+            return DownloadCache.getInstance().submitTask(this);
         }
         return false;
     }
 
+    /**
+     * 运行在磁盘io结束的任务
+     * @param runnable
+     */
     public void setFinishRunnable(Runnable runnable) {
         this.finishRunnable = runnable;
     }
 
+    /**
+     * 准备多线程下载需要信息
+     * @return
+     */
     private ArrayList<AbstractDownloadRunnable> prepareSubTask() {
 
         final int blockCount = info.getBlockCount();
@@ -185,6 +205,11 @@ public class DownloadTask {
 
     }
 
+    /**
+     * 启动多线程下载任务
+     * @param runnables
+     * @throws InterruptedException
+     */
     private void startSubTask(ArrayList<AbstractDownloadRunnable> runnables) throws InterruptedException {
         if (runnables.isEmpty()) {
             return;
@@ -343,13 +368,21 @@ public class DownloadTask {
     }
 
     public void dispatchCancel() {
-        DownloadCache.getInstance().onStop(this, false);
+        DownloadCache.getInstance().onStop(this, true);
         getCallbackDispatcher().taskEnd(this, EndCause.CANCELED, null);
+        dispatchPostTreatment(this, EndCause.CANCELED, null);
     }
 
     public void dispatchError(Throwable throwable) {
-        DownloadCache.getInstance().onStop(this, false);
+        DownloadCache.getInstance().onStop(this, true);
         getCallbackDispatcher().taskEnd(this, EndCause.ERROR, throwable);
+        dispatchPostTreatment(this, EndCause.ERROR, throwable);
+    }
+    public void dispatchComplete(){
+        DownloadCache.getInstance().deleteInfo(info.getId());
+        DownloadCache.getInstance().onComplete(this, true);
+        getCallbackDispatcher().taskEnd(this, EndCause.COMPLETED, null);
+        dispatchPostTreatment(this, EndCause.COMPLETED, null);
     }
 
     public int getRunnableSize() {
@@ -396,6 +429,9 @@ public class DownloadTask {
     }
 
 
+    /**
+     * 暂停下载
+     */
     public void stop() {
         if (taskStatus.compareAndSet(DownloadCache.RUNNING, DownloadCache.STOP)) {
             setIsStopped(true);
@@ -414,6 +450,15 @@ public class DownloadTask {
 
     }
 
+    public void setPostTreatment(DownloadPostTreatment postTreatment) {
+        this.postTreatment = postTreatment;
+    }
+    public void dispatchPostTreatment(@NonNull DownloadTask task, @NonNull EndCause cause, @Nullable Throwable realCause){
+        if(postTreatment != null){
+            postTreatment.onEnd(task,cause,realCause);
+            postTreatment = null;
+        }
+    }
 
     public void setThrowable(Throwable e) {
         this.causeThrowable = e;
