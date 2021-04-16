@@ -7,6 +7,10 @@ import com.jiulongteng.http.download.cause.EndCause
  */
 typealias onTaskStart = (task: DownloadTask) -> Unit
 
+typealias onDownloadProgress =  (
+        task: DownloadTask,progress: Int, currentSize: Long, contentLength: Long
+) -> Unit
+
 /**
  * Correspond to [DownloadListener.connectTrialStart]
  */
@@ -42,7 +46,7 @@ typealias onProgressSpeed = (task: DownloadTask, speedCalculator: SpeedCalculato
 /**
  * A concise way to create a [DownloadListener], only the [DownloadListener.taskEnd] is necessary.
  */
-fun createListener(
+fun DownloadListener.createDownloadListener(
         onTaskStart: onTaskStart? = null,
         onConnectTrialStart: onConnectTrialStart? = null,
         onFetchStart: onFetchStart? = null,
@@ -78,7 +82,7 @@ fun createListener(
     }
 }
 
-fun setListener(task: DownloadTask,
+fun DownloadTask.setDownloadListenerWithSpeed(
                 onTaskStart: onTaskStart? = null,
                 onConnectTrialStart: onConnectTrialStart? = null,
                 onFetchStart: onFetchStart? = null,
@@ -87,7 +91,7 @@ fun setListener(task: DownloadTask,
                 onProgressSpeed: onProgressSpeed?
 
 ) {
-    task.downloadListener = object : DownloadListener {
+    this.downloadListener = object : DownloadListener {
 
         override fun taskStart(task: DownloadTask) {
             onTaskStart?.invoke(task)
@@ -112,11 +116,44 @@ fun setListener(task: DownloadTask,
 
         }
     }
-    task.speedListener = object : SpeedListener {
-        override fun onProgress(task: DownloadTask, speedCalculator: SpeedCalculator) {
-            onProgressSpeed?.invoke(task,speedCalculator)
+    if(onProgressSpeed != null){
+        this.speedListener = object : SpeedListener {
+            override fun onProgress(task: DownloadTask, speedCalculator: SpeedCalculator) {
+                onProgressSpeed?.invoke(task,speedCalculator)
+            }
         }
     }
+
+}
+
+fun DownloadTask.setDownloadListenerWithProgress(
+        onTaskEnd: onTaskEnd?,
+        onProgress:onDownloadProgress
+
+) {
+    this.downloadListener = object : DownloadListener {
+
+        override fun taskStart(task: DownloadTask) {
+        }
+
+        override fun connectTrialStart(task: DownloadTask) {
+        }
+
+
+        override fun fetchStart(task: DownloadTask, isFromBeginning: Boolean) {
+        }
+
+        override fun fetchProgress(task: DownloadTask, currentProgress: Int, currentSize: Long, contentLength: Long, speed: Long) {
+            onProgress?.invoke(task,currentProgress, currentSize, contentLength)
+        }
+
+        override fun taskEnd(task: DownloadTask, cause: EndCause,
+                             realCause: Throwable?) {
+            onTaskEnd?.invoke(task, cause, realCause)
+
+        }
+    }
+
 }
 
 

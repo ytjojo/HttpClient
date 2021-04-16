@@ -1,6 +1,5 @@
 package com.jiulongteng.http.progress;
 
-import com.jiulongteng.http.entities.Progress;
 
 import java.io.IOException;
 
@@ -120,7 +119,6 @@ public class ProgressRequestBody extends RequestBody {
 
     private void updateProgress(int progress, long currentSize, long totalSize) {
         if (callback == null) return;
-        Progress p = new Progress(progress, currentSize, totalSize);
-        callback.update(p);
+        callback.update(progress, currentSize, totalSize);
     }
 }

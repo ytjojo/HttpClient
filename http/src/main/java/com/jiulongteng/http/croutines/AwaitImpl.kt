@@ -14,7 +14,7 @@ internal class AwaitImpl<T>(
 
         return try {
             LogUtil.logThread("AwaitImpl.await")
-            request.execute()
+            request.rxAwait()
         } catch (t: Throwable) {
             throw t
         }

@@ -33,6 +33,9 @@ suspend fun <T> IRequest<T>.execute(): T {
     }
 }
 
+
+
+
 suspend fun <T> IRequest<T>.await(): T = AwaitImpl<T>(this).await()
 
 suspend fun <T> IRequest<T>.async(
@@ -43,7 +46,7 @@ suspend fun <T> IRequest<T>.async(
     await()
 }
 
-suspend inline fun <reified T : Any> IRequest<Any>.asyncAs(
+suspend inline fun <reified T : Any> IRequest<Any>.castAsync(
         scope: CoroutineScope,
         context: CoroutineContext = SupervisorJob(),
         start: CoroutineStart = CoroutineStart.DEFAULT
@@ -60,7 +63,7 @@ inline fun <T : Any> IRequest<Any>.cast(): IRequest<T> {
     return this as IRequest<T>;
 }
 
-suspend inline fun <reified T : Any> IRequest<Any>.awaitAs(): T {
+suspend inline fun <reified T : Any> IRequest<Any>.castAwait(): T {
     val type = T::class.java;
     return asType<T>(type).await()
 }

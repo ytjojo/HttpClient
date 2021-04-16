@@ -1,6 +1,5 @@
 package com.jiulongteng.http.progress;
 
-import com.jiulongteng.http.entities.Progress;
 
 import java.io.IOException;
 
@@ -65,7 +64,7 @@ public class ProgressResponseBody extends ResponseBody {
                 int currentProgress = (int) ((totalBytesRead * 100) / contentLength);
                 if (currentProgress <= lastProgress) return bytesRead; //进度较上次没有更新，直接返回
                 lastProgress = currentProgress;
-                progressListener.update(new Progress(currentProgress, totalBytesRead, contentLength));
+                progressListener.update(currentProgress, totalBytesRead, contentLength);
                 lastProgress = currentProgress;
                 return bytesRead;
             }

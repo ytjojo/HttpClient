@@ -77,10 +77,10 @@ ext {
     // Sdk and tools
     minSdkVersion = 21
     targetSdkVersion = 28
-    compileSdkVersion = 28
+    compileSdkVersion = 30
     versionCode =1
     versionName ="1.0"
-    buildToolsVersion = '28.0.3'
+    buildToolsVersion = '30.0.2'
 
 
     retrofit = 'com.squareup.retrofit2:retrofit:2.3.0'

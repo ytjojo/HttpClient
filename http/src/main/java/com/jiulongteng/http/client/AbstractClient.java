@@ -51,11 +51,16 @@ import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava3.RxJava3CallAdapterFactory;
 import retrofit2.http.Body;
+import retrofit2.http.Field;
+import retrofit2.http.FieldMap;
+import retrofit2.http.FormUrlEncoded;
 import retrofit2.http.GET;
 import retrofit2.http.HEAD;
+import retrofit2.http.HTTP;
 import retrofit2.http.HeaderMap;
 import retrofit2.http.Multipart;
 import retrofit2.http.POST;
+import retrofit2.http.PUT;
 import retrofit2.http.Part;
 import retrofit2.http.Url;
 
@@ -282,7 +287,7 @@ public abstract class AbstractClient {
                     gsonConverter.setBoundaryResultClass(resultBoundary);
                 }
                 T data = (T) convert.convert(rawResponse.body());
-                if (resultBoundary != null && TypeUtil.isAssignableFrom(resultBoundary, type)) {
+                if (resultBoundary != null && TypeUtil.isAssignableFrom(IResult.class,resultBoundary)) {
                     ((IResult) data).setHeaders(rawResponse.headers());
                     return (IResult) data;
                 }
@@ -348,6 +353,11 @@ public abstract class AbstractClient {
         Observable<Response<ResponseBody>> multipartPost(@HeaderMap Map<String, String> headers, @Url String url, @Part List<MultipartBody.Part> partList);
 
         @RawString
+        @FormUrlEncoded
+        @POST
+        Observable<Response<ResponseBody>> postFormUrlEncoded(@HeaderMap Map<String, String> headers, @Url String url,@FieldMap HashMap<String,String> fieldMap);
+
+        @RawString
         @POST
         Observable<Response<ResponseBody>> post(@HeaderMap Map<String, String> headers, @Url String url);
 
@@ -361,7 +371,24 @@ public abstract class AbstractClient {
 
         @HEAD
         @RawString
-        Observable<Response<ResponseBody>> getInstanceLength(@HeaderMap Map<String,String> headers,String url);
+        Observable<Response<ResponseBody>> head(@HeaderMap Map<String,String> headers,String url);
+
+        @HTTP(method = "DELETE", hasBody= true)
+        @RawString
+        Observable<Response<ResponseBody>> delete(@HeaderMap Map<String,String> headers,String url);
+
+        @RawString
+        @PUT
+        @FormUrlEncoded
+        Observable<Response<ResponseBody>> put(@HeaderMap Map<String, String> headers, @Url String url, @FieldMap HashMap<String,String> fieldMap);
+
+        @RawString
+        @PUT
+        @Multipart
+        Observable<Response<ResponseBody>> put(@HeaderMap Map<String, String> headers, @Url String url, @Part List<MultipartBody.Part> partList);
+
+
+
     }
 
 
@@ -375,6 +402,21 @@ public abstract class AbstractClient {
 
     public IRequest<Object> postForm(String relativeUrl) {
         return new HttpRequest<Object>().from(this, HttpRequest.HttpMethod.POSTFORM).relativeUrl(relativeUrl);
+    }
+
+    public IRequest<Object> head(String relativeUrl) {
+        return new HttpRequest<Object>().from(this, HttpRequest.HttpMethod.HEAD).relativeUrl(relativeUrl);
+    }
+
+    public IRequest<Object> put(String relativeUrl) {
+        return new HttpRequest<Object>().from(this, HttpRequest.HttpMethod.PUT).relativeUrl(relativeUrl);
+    }
+    public IRequest<Object> delete(String relativeUrl) {
+        return new HttpRequest<Object>().from(this, HttpRequest.HttpMethod.DELETE).relativeUrl(relativeUrl);
+    }
+
+    public IRequest<Object> request(String relativeUrl,HttpRequest.HttpMethod method) {
+        return new HttpRequest<Object>().from(this, method).relativeUrl(relativeUrl);
     }
 }
 
