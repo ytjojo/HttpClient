@@ -10,6 +10,8 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import com.jiulongteng.http.download.db.DownloadCache
+import com.jiulongteng.http.progress.ProgressListener
+import com.jiulongteng.http.progress.ProgressRequestBody
 import com.jiulongteng.http.progress.UriRequestBody
 import okhttp3.MediaType
 import okhttp3.MultipartBody
@@ -37,6 +39,17 @@ fun Uri.asPart(
 ): MultipartBody.Part {
     val newFilename = filename ?: displayName()
     return MultipartBody.Part.createFormData(key, newFilename, asRequestBody(contentType))
+}
+
+@JvmOverloads
+fun Uri.asPart(
+        key: String,
+        filename: String? = null,
+        contentType: MediaType? = null,
+        progressListener: ProgressListener?
+): MultipartBody.Part {
+    val newFilename = filename ?: displayName()
+    return MultipartBody.Part.createFormData(key, newFilename, ProgressRequestBody(asRequestBody(contentType),progressListener))
 }
 
 fun Uri?.length(context: Context): Long {

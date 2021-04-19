@@ -1,5 +1,7 @@
 package com.jiulongteng.http.request;
 
+import android.net.Uri;
+
 import androidx.lifecycle.LifecycleOwner;
 
 import com.google.gson.reflect.TypeToken;
@@ -94,6 +96,9 @@ public interface IRequest<T>{
     IRequest<T> uploadFile(File file, ProgressListener progressListener);
 
     IRequest<T> uploadFile(ArrayList<File> files, ArrayList<ProgressListener> progressListeners);
+
+    IRequest<T> uploadFile(Uri uri, ProgressListener progressListener);
+    IRequest<T> uploadFiles(ArrayList<Uri> uriList, ArrayList<ProgressListener> progressListeners);
 
 
 

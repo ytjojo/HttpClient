@@ -35,7 +35,7 @@ public class UriRequestBody extends RequestBody {
             return getMediaType((uri.getLastPathSegment()));
         } else {
             String contentType = DownloadCache.getContext().getContentResolver().getType(uri);
-            return contentType != null ? MediaType.parse(contentType) : null;
+            return contentType != null ? MediaType.parse(contentType) : MediaType.parse("application/octet-stream");
         }
     }
 

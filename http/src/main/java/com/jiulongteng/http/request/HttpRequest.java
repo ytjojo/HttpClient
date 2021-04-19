@@ -1,5 +1,7 @@
 package com.jiulongteng.http.request;
 
+import android.net.Uri;
+
 import androidx.lifecycle.LifecycleOwner;
 
 import com.google.gson.internal.$Gson$Types;
@@ -16,6 +18,7 @@ import com.jiulongteng.http.util.CollectionUtils;
 import com.jiulongteng.http.util.LogUtil;
 import com.jiulongteng.http.util.TextUtils;
 import com.jiulongteng.http.util.TypeUtil;
+import com.jiulongteng.http.util.UriUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,6 +29,7 @@ import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.HostnameVerifier;
@@ -171,6 +175,29 @@ public class HttpRequest<T> implements IRequest<T> {
                 new ProgressRequestBody(
                         RequestBody.create(MediaType.parse(contentType), file),
                         progressListener)));
+        return this;
+    }
+
+    @Override
+    public IRequest<T> uploadFile(Uri uri, ProgressListener progressListener) {
+
+        // 第一个参数为文件的 key, 即 partName,需要和服务器约定
+        // 对应的请求头: Content-Disposition: form-data; name="file$i"; filename="xxx"
+        addMultipart(UriUtil.asPart(uri,"file",null,progressListener));
+        return this;
+    }
+
+    @Override
+    public IRequest<T> uploadFiles(ArrayList<Uri> files, ArrayList<ProgressListener> progressListeners) {
+        int index = 0;
+        for (Uri uri : files) {
+            ProgressListener progressListener = null;
+            if (progressListeners != null && index < progressListeners.size()) {
+                progressListener = progressListeners.get(index);
+            }
+            uploadFile(uri, progressListener);
+            index++;
+        }
         return this;
     }
 
