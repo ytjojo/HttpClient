@@ -100,28 +100,22 @@ public class CallbackDispatcher implements DownloadListener {
 
     @Override
     public void taskEnd(@NonNull DownloadTask task, @NonNull EndCause cause, @Nullable Throwable realCause) {
-        if (uiHandler != null) {
+        fetchProgress(task);
+       if (uiHandler != null) {
             uiHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    if (cause == EndCause.COMPLETED && realCause == null) {
-                        //100%
-                        fetchProgress(task);
-                    }
+
                     task.getDownloadListener().taskEnd(task, cause, realCause);
                 }
             });
         } else {
-            if (cause == null && realCause == null) {
-                //100%
-                fetchProgress(task);
-            }
             task.getDownloadListener().taskEnd(task, cause, realCause);
         }
     }
 
     public void fetchProgress(@NonNull DownloadTask task) {
-        if (isFetchProcessMoment() || task.getTaskStatus() == DownloadCache.COMPLETE) {
+        if (isFetchProcessMoment() || task.getTaskStatus() != DownloadCache.RUNNING) {
             final long lastTime = lastCallbackProcessTime.get();
             final long currentTime = nowMillis();
 
