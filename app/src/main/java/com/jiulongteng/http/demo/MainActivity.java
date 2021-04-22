@@ -1,7 +1,13 @@
 package com.jiulongteng.http.demo;
 
+import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.app.Activity;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
@@ -11,13 +17,21 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.model.GlideUrl;
 import com.jiulongteng.http.download.DownloadListener;
 import com.jiulongteng.http.download.DownloadTask;
+import com.jiulongteng.http.download.FileTargetProvider;
+import com.jiulongteng.http.download.TargetProvider;
+import com.jiulongteng.http.download.UriTargetProvider;
 import com.jiulongteng.http.download.Util;
 import com.jiulongteng.http.download.cause.EndCause;
 import com.jiulongteng.http.download.db.Dao;
 import com.jiulongteng.http.download.db.DownloadCache;
 import com.jiulongteng.http.interceptor.HttpLoggingInterceptor;
+
+import java.io.File;
+import java.net.URLConnection;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -48,6 +62,12 @@ public class MainActivity extends Activity {
         DownloadCache.setContext(getApplicationContext());
 
 
+        insertApk();
+    }
+    @TargetApi(Build.VERSION_CODES.Q)
+    private void insertApk(){
+
+
     }
 
     long start;
@@ -55,7 +75,8 @@ public class MainActivity extends Activity {
 
     public void download(){
         if(downloadTask == null){
-            String url = "http://update.myweimai.com/wemay.apk";
+//            String url = "http://update.myweimai.com/wemay.apk";
+            String url = "https://cdn.llscdn.com/yy/files/xs8qmxn8-lls-LLS-5.8-800-20171207-111607.apk";
 //            String url = "http://dldir1.qq.com/weixin/Windows/WeChatSetup.exe";
 
             Request request = new Request.Builder().url(url)
@@ -88,7 +109,14 @@ public class MainActivity extends Activity {
                 }
             });
             OkHttpClient okHttpClient = new OkHttpClient.Builder().addInterceptor(loginter).build();
-            downloadTask = new DownloadTask(getExternalCacheDir(),okHttpClient,request,5);
+            TargetProvider targetProvider = null;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                targetProvider = new UriTargetProvider(MediaStore.Downloads.EXTERNAL_CONTENT_URI,"myapk2.apk",null);
+            }else {
+                targetProvider = new FileTargetProvider(getExternalCacheDir());
+            }
+            targetProvider = new FileTargetProvider(getExternalCacheDir());
+            downloadTask = new DownloadTask(targetProvider,okHttpClient,request,5);
 
             downloadTask.setDownloadListener(new DownloadListener() {
                 @Override
@@ -105,7 +133,7 @@ public class MainActivity extends Activity {
 
                 @Override
                 public void fetchStart(@androidx.annotation.NonNull DownloadTask task, boolean isFromBeginning) {
-                    Util.i(TAG,"fetchStart"+task.getFile().getAbsolutePath() +" totalOffset" + task.getInfo().getTotalOffset()  +" getTotalLength " + task.getInfo().getTotalLength());
+                    Util.i(TAG,"fetchStart"+task.getTargetProvider().getTargetFile().getAbsolutePath() +" totalOffset" + task.getInfo().getTotalOffset()  +" getTotalLength " + task.getInfo().getTotalLength());
                 }
 
                 @Override

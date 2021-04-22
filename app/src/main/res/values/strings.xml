@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Flux</string>
+    <string name="app_name">HttpClientDemo</string>
     <string name="action_settings">Settings</string>
     <string name="action_status">状态栏</string>
     <string name="setting">设置</string>

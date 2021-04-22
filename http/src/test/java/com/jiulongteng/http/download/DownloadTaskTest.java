@@ -86,16 +86,17 @@ public class DownloadTaskTest extends TestCase {
             @Override
             public void taskEnd(@NonNull DownloadTask task, @NonNull EndCause cause, @Nullable Throwable realCause) {
                 if(realCause != null){
-//                    realCause.printStackTrace();
+                    realCause.printStackTrace();
                 }
                 System.out.println("taskEnd  stop =" + (System.currentTimeMillis()   - stop)  + "  total = " +  + (System.currentTimeMillis() - start));
             }
         });
         task.setSpeedListener(new SpeedListener() {
             @Override
-            public void onProgress(SpeedCalculator speedCalculator) {
+            public void onProgress(DownloadTask task, SpeedCalculator speedCalculator) {
                 System.out.println(speedCalculator.getInstantBytesPerSecondAndFlush() +  " speed " + speedCalculator.getBytesPerSecondFromBegin());
             }
+
         });
 
         DownloadCache.getInstance().enqueueInternal(task);
