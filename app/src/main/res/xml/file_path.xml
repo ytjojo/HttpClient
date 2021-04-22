@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!--
+        app内部的存储  Context.getFilesDir()
+        path: 表示对应目录下的子目录, 不写代表根目录
+        name: 表示生成 content://xxxx 时,用来代表该目录的别名
+    -->
+    <files-path path="" name="files_path" />
+    <!--
+        内部缓存目录 getCacheDir()
+    -->
+    <cache-path path="" name="cache-path" />
+    <!--
+        外部的存储 Environment.getExternalStorageDirectory()
+    -->
+    <external-path path="" name="external-path" />
+
+
+    <!--
+        外置SD卡
+    -->
+    <root-path path="" name="root-path" />
+
+</paths>
