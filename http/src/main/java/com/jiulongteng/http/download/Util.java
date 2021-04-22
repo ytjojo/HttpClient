@@ -307,7 +307,7 @@ public class Util {
                 cursor.close();
             }
         }
-        return 0;
+        return -1;
     }
 
     public static boolean isNetworkAvailable(ConnectivityManager manager) {
