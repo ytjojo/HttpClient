@@ -11,7 +11,6 @@ import java.io.BufferedInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InterruptedIOException;
-import java.util.concurrent.atomic.AtomicLong;
 
 import okhttp3.Request;
 import okhttp3.Response;
@@ -20,15 +19,12 @@ import okhttp3.ResponseBody;
 public class DownloadAndroidRunnable extends AbstractDownloadRunnable {
 
     private final static String TAG = "DownloadAndroidRunnable";
-    private long bufferMax; //缓冲区允许放置的字节级数据量
-    private AtomicLong bufferedLength;    //缓冲区中未刷入内存的大小即缓冲区写入模式下的起始位置
-    DownloadUriOutputStream outputStream = null;
+    DownloadOutputStream outputStream = null;
     long readLength;
 
 
     public DownloadAndroidRunnable(DownloadTask task, BlockInfo info, int index) {
         super(task, info, index);
-        this.setBufferMax(DownloadCache.getInstance().getSyncBufferSize());//设置允许的512KB的缓存数
     }
 
 
@@ -44,7 +40,7 @@ public class DownloadAndroidRunnable extends AbstractDownloadRunnable {
                 throw new DownloadException(DownloadException.NETWORK_POLICY_ERROR,"invalid network state");
             }
             Request rangeRequest = task.getRawRequest().newBuilder().header(Util.RANGE, "bytes=" + blockInfo.getRangeLeft() + "-" + blockInfo.getRangeRight()).build();
-            Util.i(TAG, "Range = bytes=" + blockInfo.getRangeLeft() + "-" + blockInfo.getRangeRight());
+            Util.i(TAG, "Range = bytes=" + blockInfo.getRangeLeft() + "-" + blockInfo.getRangeRight() + "  " + blockInfo.getCurrentOffset());
             if (!TextUtils.isEmpty(task.getRedirectLocation())) {
                 rangeRequest = rangeRequest.newBuilder().url(task.getRedirectLocation()).build();
             }
@@ -60,7 +56,7 @@ public class DownloadAndroidRunnable extends AbstractDownloadRunnable {
 //            ParcelFileDescriptor pfd = ParcelFileDescriptor.open(
 //                    task.getFile(), ParcelFileDescriptor.parseMode("rw"));
             try {
-                outputStream = new DownloadUriOutputStream(DownloadCache.getContext(), task.getFile(), getBufferSize());
+                outputStream = (DownloadOutputStream) task.getTargetProvider().getOutputStream();
             } catch (FileNotFoundException e) {
                 task.setThrowable(e);
             }
@@ -69,20 +65,16 @@ public class DownloadAndroidRunnable extends AbstractDownloadRunnable {
             setBufferedLength(0);
             long byteRead = 0;
             readLength = 0;
-            byte[] b = new byte[getBufferSize()];
+            byte[] b = new byte[getByteBufferSize()];
             while ((byteRead = bis.read(b)) != -1) {
                 if (task.isStoped()) {
                     Util.i(TAG, " ----found stop");
-                    task.getFlushRunnable().flush(this);
                     break;
                 }
                 if(!DownloadCache.getInstance().isNetPolicyValid(task)){
                     throw new DownloadException(DownloadException.NETWORK_POLICY_ERROR,"invalid network state");
                 }
 
-                if (getBufferedLength() + byteRead >= getBufferMax()) {
-                    task.getFlushRunnable().flush(this);
-                }
                 final long targetLength = readLength + byteRead;
                 if (targetLength > blockInfo.getContentLength()) {
                     byteRead = blockInfo.getContentLength() - readLength;
@@ -107,7 +99,7 @@ public class DownloadAndroidRunnable extends AbstractDownloadRunnable {
                     }
                 }
             }
-            Util.i(TAG, "   parkThread");
+            Util.i(TAG, "ReadByteFinished   parkThread index =" + getIndex());
             parkThread();
         } catch (InterruptedIOException e){
 
@@ -115,11 +107,7 @@ public class DownloadAndroidRunnable extends AbstractDownloadRunnable {
             task.setThrowable(e);
         } finally {
             Util.i(TAG, "  finally");
-            try {
-                unmap();
-            } catch (IOException e) {
 
-            }
             okhttp3.internal.Util.closeQuietly(outputStream);
             okhttp3.internal.Util.closeQuietly(bis);
             okhttp3.internal.Util.closeQuietly(responseBody);
@@ -167,7 +155,7 @@ public class DownloadAndroidRunnable extends AbstractDownloadRunnable {
 
         final ResumeFailedCause resumeFailedCause = DownloadPretreatment
                 .getPreconditionFailedCause(code, blockInfo.getCurrentOffset() != 0,
-                        task.getInfo(), newEtag);
+                        task.getInfo().getEtag(), newEtag);
         if (resumeFailedCause != null) {
             // resume failed, relaunch from beginning.
             throw new DownloadException(DownloadException.RESUME_ERROR, resumeFailedCause.toString());
@@ -196,27 +184,18 @@ public class DownloadAndroidRunnable extends AbstractDownloadRunnable {
     @Override
     public void flush() throws IOException {
         final long buffered = getBufferedLength();
-        if ((buffered > getBufferMax() || (getIsReadByteFinished() && buffered > 0))) {
+        if ( buffered > 0) {
             outputStream.flushAndSync();
             blockInfo.increaseCurrentOffset(buffered);
             addAndGetBufferedLength(-buffered);
+            Util.i(TAG,"index " +getIndex() + " flush " + buffered + " currentOffset "+ blockInfo.getCurrentOffset());
             DownloadCache.getInstance().updateBlockInfo(blockInfo.getId(), blockInfo.getCurrentOffset());
-            task.getCallbackDispatcher().fetchProgress(task);
         }
 
 
     }
 
-    private void showLog(String info) {
-        Util.i("DownloadRunnable", info);
-    }
 
-    /**
-     * 显式回收MappedByteBuffer实例
-     */
-    private void unmap() throws IOException {
-        flush();
 
-    }
 
 }
