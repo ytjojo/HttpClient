@@ -42,8 +42,6 @@ public class BreakpointInfo {
     private final boolean taskOnlyProvidedParentPath;
     private boolean chunked;
 
-    private String md5Code;
-
     public BreakpointInfo(int id, @NonNull String url,String etag, @NonNull File parentFile,
                           @Nullable String filename) {
         this(id,url,etag,parentFile,filename,!TextUtils.isEmpty(filename));
@@ -203,7 +201,7 @@ public class BreakpointInfo {
     }
 
     public boolean isSameFrom(DownloadTask task) {
-        if (!parentFile.equals(task.getParentFile())) {
+        if (!parentFile.equals(task.getTargetProvider().getParentFile())) {
             return false;
         }
 
@@ -236,7 +234,7 @@ public class BreakpointInfo {
         if (blockCount <= 0) return false;
         if (info.isChunked()) return false;
         if (info.getFile() == null) return false;
-        final File fileOnTask = task.getFile();
+        final File fileOnTask = task.getTargetProvider().getTargetFile();
         if (!info.getFile().equals(fileOnTask)) return false;
         if (info.getFile().length() > info.getTotalLength()) return false;
 
@@ -273,11 +271,6 @@ public class BreakpointInfo {
         this.fileName = fileName;
     }
 
-    public String getMd5Code() {
-        return md5Code;
-    }
 
-    public void setMd5Code(String md5Code) {
-        this.md5Code = md5Code;
-    }
+
 }

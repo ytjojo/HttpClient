@@ -13,6 +13,7 @@ import com.jiulongteng.http.download.dispatcher.CallbackDispatcher;
 import com.jiulongteng.http.download.entry.BlockInfo;
 import com.jiulongteng.http.download.entry.BreakpointInfo;
 import com.jiulongteng.http.util.CollectionUtils;
+import com.jiulongteng.http.util.TextUtils;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -27,9 +28,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import okhttp3.Headers;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
-import okhttp3.internal.platform.Platform;
 
 /**
  * 单个下载任务控制类
@@ -39,13 +40,11 @@ public class DownloadTask {
     private static final ExecutorService EXECUTOR = new ThreadPoolExecutor(0, Integer.MAX_VALUE,
             60, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(),
             Util.threadFactory("OkDownload Block", false));
-    private File mFile;
 
     final private AtomicBoolean isStopped;
     OkHttpClient client;
     Request rawRequest;
     String fileName;
-    File parentFile;
     @Nullable
     private String redirectLocation;
 
@@ -76,16 +75,21 @@ public class DownloadTask {
     SpeedListener speedListener;
     CallbackDispatcher callbackDispatcher;
     AtomicInteger taskStatus = new AtomicInteger(DownloadCache.PENDING);
+    private TargetProvider targetProvider;
+    private Headers responseHeaders;
+
+    private String md5Code;
 
     public DownloadTask(File file, OkHttpClient client, Request request, Integer connectionCount) {
+        this(new FileTargetProvider(file), client, request, connectionCount);
+    }
 
-        if (file.isDirectory()) {
-            this.parentFile = file;
+    public DownloadTask(TargetProvider targetProvider, OkHttpClient client, Request request, Integer connectionCount) {
+        this.targetProvider = targetProvider;
+        if (TextUtils.isEmpty(targetProvider.getFileName())) {
             this.isFilenameFromResponse = true;
         } else {
-            this.mFile = file;
-            this.parentFile = file.getParentFile();
-            this.fileName = file.getName();
+            this.fileName = targetProvider.getFileName();
         }
 
         this.client = client;
@@ -106,8 +110,8 @@ public class DownloadTask {
     }
 
     /**
-     *  下载前预处理
-     *  启动多线程下载
+     * 下载前预处理
+     * 启动多线程下载
      */
     public void execute() {
         reset();
@@ -135,14 +139,14 @@ public class DownloadTask {
         downloadRunnables.addAll(runnables);
         flushRunnable = new FlushRunnable(this, finishRunnable);
 
-        getCallbackDispatcher().fetchStart(this, getInfo().getTotalOffset() > 0);
+        getCallbackDispatcher().fetchStart(this, getInfo().getTotalOffset() == 0);
         try {
             startSubTask(runnables);
         } catch (InterruptedException e) {
 
         }
         if (getInfo().getTotalOffset() == getInfo().getTotalLength()) {
-           dispatchComplete();
+            dispatchComplete();
         } else {
             if (causeThrowable != null) {
                 dispatchError(causeThrowable);
@@ -161,7 +165,8 @@ public class DownloadTask {
     }
 
     /**
-     *  对暂停或者结束的任务重新开始加入队列下载
+     * 对暂停或者结束的任务重新开始加入队列下载
+     *
      * @return
      */
     public boolean reStart() {
@@ -174,6 +179,7 @@ public class DownloadTask {
 
     /**
      * 运行在磁盘io结束的任务
+     *
      * @param runnable
      */
     public void setFinishRunnable(Runnable runnable) {
@@ -182,23 +188,26 @@ public class DownloadTask {
 
     /**
      * 准备多线程下载需要信息
+     *
      * @return
      */
     private ArrayList<AbstractDownloadRunnable> prepareSubTask() {
 
         final int blockCount = info.getBlockCount();
         ArrayList<AbstractDownloadRunnable> runnables = new ArrayList<>();
+        int index = 0;
         for (int i = 0; i < blockCount; i++) {
             final BlockInfo blockInfo = info.getBlock(i);
             if (Util.isCorrectFull(blockInfo.getCurrentOffset(), blockInfo.getContentLength())) {
                 continue;
             }
             Util.resetBlockIfDirty(blockInfo);
-            if(DownloadCache.getInstance().isAndroid()){
-                runnables.add(new DownloadAndroidRunnable(this, blockInfo, i));
-            }else {
-                runnables.add(new DownloadRunnable(this, blockInfo, i));
+            if (DownloadCache.getInstance().isAndroid()) {
+                runnables.add(new DownloadAndroidRunnable(this, blockInfo, index));
+            } else {
+                runnables.add(new DownloadRunnable(this, blockInfo, index));
             }
+            index++;
 
         }
         return runnables;
@@ -207,6 +216,7 @@ public class DownloadTask {
 
     /**
      * 启动多线程下载任务
+     *
      * @param runnables
      * @throws InterruptedException
      */
@@ -239,9 +249,9 @@ public class DownloadTask {
     }
 
 
-    public File getParentFile() {
-        return parentFile;
-    }
+//    public File getParentFile() {
+//        return targetProvider.getParentFile();
+//    }
 
     public String getUrl() {
         return rawRequest.url().toString();
@@ -255,9 +265,9 @@ public class DownloadTask {
         return isFilenameFromResponse;
     }
 
-    public File getFile() {
-        return mFile;
-    }
+//    public File getFile() {
+//        return targetProvider.getTargetFile();
+//    }
 
 
     public void setIsStopped(boolean isStopped) {
@@ -287,15 +297,10 @@ public class DownloadTask {
 
     public void setFileName(String fileName) {
         this.fileName = fileName;
-        this.mFile = new File(parentFile, fileName);
-        if (this.getInfo() != null) {
-            getInfo().setFileName(fileName);
-        }
+        targetProvider.setFileName(fileName);
+
     }
 
-    public void setParentFile(File parentFile) {
-        this.parentFile = parentFile;
-    }
 
     @Nullable
     public String getRedirectLocation() {
@@ -378,7 +383,8 @@ public class DownloadTask {
         getCallbackDispatcher().taskEnd(this, EndCause.ERROR, throwable);
         dispatchPostTreatment(this, EndCause.ERROR, throwable);
     }
-    public void dispatchComplete(){
+
+    public void dispatchComplete() {
         DownloadCache.getInstance().deleteInfo(info.getId());
         DownloadCache.getInstance().onComplete(this, true);
         getCallbackDispatcher().taskEnd(this, EndCause.COMPLETED, null);
@@ -408,7 +414,8 @@ public class DownloadTask {
         this.downloadListener = listener;
 
     }
-    public void setSpeedListener(SpeedListener listener){
+
+    public void setSpeedListener(SpeedListener listener) {
         speedListener = listener;
     }
 
@@ -453,9 +460,10 @@ public class DownloadTask {
     public void setPostTreatment(DownloadPostTreatment postTreatment) {
         this.postTreatment = postTreatment;
     }
-    public void dispatchPostTreatment(@NonNull DownloadTask task, @NonNull EndCause cause, @Nullable Throwable realCause){
-        if(postTreatment != null){
-            postTreatment.onEnd(task,cause,realCause);
+
+    public void dispatchPostTreatment(@NonNull DownloadTask task, @NonNull EndCause cause, @Nullable Throwable realCause) {
+        if (postTreatment != null) {
+            postTreatment.onEnd(task, cause, realCause);
             postTreatment = null;
         }
     }
@@ -475,11 +483,31 @@ public class DownloadTask {
         }
         return rawRequest.url().toString().equals(that.rawRequest.url().toString()) &&
                 Objects.equals(fileName, that.fileName) &&
-                parentFile.equals(that.parentFile);
+                targetProvider.getParentFile().equals(that.getTargetProvider().getParentFile());
+    }
+
+    public TargetProvider getTargetProvider() {
+        return this.targetProvider;
+    }
+
+    public void setResponseHeaders(Headers responseHeaders) {
+        this.responseHeaders = responseHeaders;
+    }
+
+    public Headers getResponseHeaders() {
+        return responseHeaders;
+    }
+
+    public String getMd5Code() {
+        return md5Code;
+    }
+
+    public void setMd5Code(String md5Code) {
+        this.md5Code = md5Code;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(rawRequest.url().toString(), fileName, parentFile.getAbsolutePath());
+        return Objects.hash(rawRequest.url().toString(), fileName, getTargetProvider().getParentFile().getAbsolutePath());
     }
 }
