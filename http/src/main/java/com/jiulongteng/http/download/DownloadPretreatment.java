@@ -1,7 +1,5 @@
 package com.jiulongteng.http.download;
 
-import android.os.StatFs;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -11,7 +9,6 @@ import com.jiulongteng.http.download.db.DownloadCache;
 import com.jiulongteng.http.download.entry.BreakpointInfo;
 import com.jiulongteng.http.util.TextUtils;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 
@@ -27,21 +24,29 @@ public class DownloadPretreatment {
         this.task = task;
     }
 
+    private String mineType;
+
 
     private void restore() {
-
         BreakpointInfo breakpointInfo = DownloadCache.getInstance().loadDownloadInfo(task.getUrl());
         if (breakpointInfo == null) {
-            breakpointInfo = new BreakpointInfo(-1, task.getUrl(), null, task.getParentFile(),
-                    task.getFilename(), task.isFilenameFromResponse());
-            DownloadCache.getInstance().saveDownloadInfo(breakpointInfo);
 
         } else {
             DownloadCache.getInstance().loadBlockInfo(breakpointInfo);
         }
         task.setInfo(breakpointInfo);
 
+    }
 
+    private void createNewInfo() throws IOException {
+        task.getTargetProvider().setFileName(task.getFileName());
+        if (task.getTargetProvider().getParentFile() == null) {
+            task.getTargetProvider().createNewTarget(mineType);
+        }
+        BreakpointInfo breakpointInfo = new BreakpointInfo(-1, task.getUrl(), task.getResponseEtag(), task.getTargetProvider().getParentFile(),
+                task.getFilename(), task.isFilenameFromResponse());
+        DownloadCache.getInstance().saveDownloadInfo(breakpointInfo);
+        task.setInfo(breakpointInfo);
     }
 
 
@@ -65,51 +70,34 @@ public class DownloadPretreatment {
     }
 
     private void localCheck() throws IOException {
-
+        boolean isExists = task.getTargetProvider().isExists();
         if (resumable) {
-            boolean isExists = task.getFile().exists();
             boolean isCorrect = BreakpointInfo.isCorrect(task.getInfo(), task);
             boolean dirty = !isCorrect || !isExists;
             if (dirty) {
-                if (task.getFile() != null && task.getFile().exists() && !task.getFile().delete()) {
+                if (isExists && !task.getTargetProvider().delete()) {
                     throw new IOException("Delete file failed!");
                 }
                 Util.assembleBlock(task);
                 DownloadCache.getInstance().saveBlockInfo(task.getInfo().getBlockInfoList(), task.getInfo());
-
-            } else {
             }
 
-
         } else {
-            if (task.getFile() != null && !task.getFile().delete()) {
+            if (isExists && !task.getTargetProvider().delete()) {
                 throw new IOException("Delete file failed!");
             }
             Util.assembleBlock(task);
             DownloadCache.getInstance().saveBlockInfo(task.getInfo().getBlockInfoList(), task.getInfo());
         }
 
-        if (!task.getParentFile().exists()) {
-            task.getParentFile().mkdirs();
-        }
-        if (!task.getFile().exists()) {
-            task.getFile().createNewFile();
+        if (!isExists) {
+            task.getTargetProvider().createNewTarget(mineType);
         }
 
+
         final long totalLength = task.getInfo().getTotalLength();
-        boolean isFileScheme = true;
-        if (isFileScheme && task.getInfo().isChunked()) {
-            final File file = task.getFile();
-            final long requireSpace = totalLength - file.length();
-            if (requireSpace > 0) {
-                StatFs statFs = new StatFs(file.getAbsolutePath());
-                final long freeSpace = Util.getFreeSpaceBytes(statFs);
-                if (freeSpace < requireSpace) {
-                    throw new DownloadException(DownloadException.PROTOCOL_ERROR, "There is Free space less than Require space: " + freeSpace + " < " + requireSpace);
-                }
-                DownloadUtils.createFile(file, totalLength);
-            }
-        } else {
+        if (!task.getInfo().isChunked()) {
+            task.getTargetProvider().allocateLength(totalLength);
         }
     }
 
@@ -118,22 +106,27 @@ public class DownloadPretreatment {
         boolean isNeedTrialHeadMethod;
         Response response = null;
         boolean isEtagRequest = false;
+        String localEtag = task.getInfo() == null ? null : task.getInfo().getEtag();
         try {
             Request request = task.getRawRequest().newBuilder().header(Util.RANGE, "bytes=0-0").build();
-            if (!Util.isEmpty(task.getInfo().getEtag())) {
+            if (!Util.isEmpty(localEtag)) {
                 isEtagRequest = true;
-                request = task.getRawRequest().newBuilder().header(Util.IF_MATCH, task.getInfo().getEtag()).build();
+                request = task.getRawRequest().newBuilder().header(Util.IF_MATCH, localEtag).build();
             }
             response = task.getClient().newCall(request).execute();
+            mineType = response.body().contentType().toString();
             Headers headers = response.headers();
+            task.setResponseHeaders(headers);
             task.setResponseCode(response.code());
             task.setResponseEtag(headers.get(Util.ETAG));
-            task.getInfo().setChunked(isChunked());
-            task.getInfo().setMd5Code(headers.get(Util.CONTENT_MD5));
+            task.setMd5Code(headers.get(Util.CONTENT_MD5));
             task.setAcceptRange(DownloadUtils.isAcceptRange(headers, response.code()));
             task.setInstanceLength(DownloadUtils.findInstanceLength(response.headers()));
-            task.setResponseEtag(DownloadUtils.findEtag(headers));
             task.setResponseFilename(DownloadUtils.findFilename(headers));
+            if (TextUtils.isEmpty(task.getFileName())) {
+                String fileName = DownloadUtils.determineFilename(task.getResponseFilename(), task.getUrl());
+                task.setFileName(fileName);
+            }
 
             isNeedTrialHeadMethod = DownloadUtils.isNeedTrialHeadMethodForInstanceLength(task.getInstanceLength(),
                     headers);
@@ -144,20 +137,20 @@ public class DownloadPretreatment {
         }
         if (isNeedTrialHeadMethod) {
             Request request = task.getRawRequest();
-            if (!Util.isEmpty(task.getInfo().getEtag())) {
-                request = task.getRawRequest().newBuilder().header(Util.IF_MATCH, task.getInfo().getEtag()).build();
+            if (!Util.isEmpty(localEtag)) {
+                request = task.getRawRequest().newBuilder().header(Util.IF_MATCH, localEtag).build();
             }
             task.setInstanceLength(DownloadUtils.trialHeadMethodForInstanceLength(task.getClient(), request));
         }
-        if (TextUtils.isEmpty(task.getFileName())) {
-            String fileName = DownloadUtils.determineFilename(task.getResponseFilename(), task.getUrl());
-            task.setFileName(fileName);
 
-        }
 
-        final ResumeFailedCause resumeFailedCause = getPreconditionFailedCause(task.getResponseCode(), task.getInfo().getTotalOffset() != 0, task.getInfo(),
+        final ResumeFailedCause resumeFailedCause = getPreconditionFailedCause(task.getResponseCode(), task.getInfo() != null && task.getInfo().getTotalOffset() != 0, localEtag,
                 task.getResponseEtag());
         resumable = resumeFailedCause == null;
+        if(task.getInfo() == null){
+           createNewInfo();
+        }
+        task.getInfo().setChunked(isChunked());
         task.getInfo().setEtag(task.getResponseEtag());
         if (!isTrialSpecialPass(task.getResponseCode(), task.getInstanceLength(), resumable)
                 && isServerCanceled(task.getResponseCode(), !isEtagRequest)) {
@@ -207,9 +200,8 @@ public class DownloadPretreatment {
 
     public static ResumeFailedCause getPreconditionFailedCause(int responseCode,
                                                                boolean isAlreadyProceed,
-                                                               @NonNull BreakpointInfo info,
+                                                               @NonNull String localEtag,
                                                                @Nullable String responseEtag) {
-        final String localEtag = info.getEtag();
         if (responseCode == HttpURLConnection.HTTP_PRECON_FAILED) {
             return ResumeFailedCause.RESPONSE_PRECONDITION_FAILED;
         }
