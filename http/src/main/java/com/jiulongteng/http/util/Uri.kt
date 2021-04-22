@@ -7,8 +7,11 @@ import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import androidx.annotation.NonNull
+import androidx.annotation.Nullable
 import com.jiulongteng.http.download.db.DownloadCache
 import com.jiulongteng.http.progress.ProgressListener
 import com.jiulongteng.http.progress.ProgressRequestBody
@@ -16,9 +19,10 @@ import com.jiulongteng.http.progress.UriRequestBody
 import okhttp3.MediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
-import okhttp3.Response
 import java.io.File
 import java.io.FileNotFoundException
+import java.io.IOError
+import java.io.IOException
 
 /**
  * User: ljx
@@ -49,7 +53,7 @@ fun Uri.asPart(
         progressListener: ProgressListener?
 ): MultipartBody.Part {
     val newFilename = filename ?: displayName()
-    return MultipartBody.Part.createFormData(key, newFilename, ProgressRequestBody(asRequestBody(contentType),progressListener))
+    return MultipartBody.Part.createFormData(key, newFilename, ProgressRequestBody(asRequestBody(contentType), progressListener))
 }
 
 fun Uri?.length(context: Context): Long {
@@ -106,37 +110,71 @@ fun Uri.query(context: Context, filename: String?, relativePath: String?): Uri? 
     }
 }
 
+
+fun Uri.queryByFileName(context: Context, filename: String?): Uri? {
+    if (filename.isNullOrEmpty()) return null
+
+    val columnNames = arrayOf(
+            MediaStore.MediaColumns._ID
+    )
+    return context.contentResolver.query(this, columnNames,
+            "_display_name=?", arrayOf(filename), null)?.use {
+        if (it.moveToFirst()) {
+            val uriId = it.getLong(0)
+            ContentUris.withAppendedId(this, uriId)
+        } else {
+            null
+        }
+    }
+}
+
 /**
  *  @param relativePath  文件相对路径，可取值:
- * [Environment.DIRECTORY_DOWNLOADS]
- * [Environment.DIRECTORY_DCIM]
- * [Environment.DIRECTORY_PICTURES]
- * [Environment.DIRECTORY_MUSIC]
- * [Environment.DIRECTORY_MOVIES]
- * [Environment.DIRECTORY_DOCUMENTS]
+ *
+ * [Environment.DIRECTORY_DOCUMENTS] 对应路径：/storage/emulated/0/Documents/
+ * [Environment.DIRECTORY_DOWNLOADS] 对应路径：/storage/emulated/0/Download/
+ * [Environment.DIRECTORY_DCIM] 对应路径：/storage/emulated/0/DCIM/
+ * [Environment.DIRECTORY_PICTURES] 对应路径：/storage/emulated/0/Pictures/
+ * [Environment.DIRECTORY_MOVIES] 对应路径：/storage/emulated/0/Movies/
+ * [Environment.DIRECTORY_ALARMS] 对应路径：/storage/emulated/0/Alrams/
+ * [Environment.DIRECTORY_MUSIC] 对应路径：/storage/emulated/0/Music/
+ * [Environment.DIRECTORY_NOTIFICATIONS] 对应路径：/storage/emulated/0/Notifications/
+ * [Environment.DIRECTORY_PODCASTS] 对应路径：/storage/emulated/0/Podcasts/
+ * [Environment.DIRECTORY_RINGTONES] 对应路径：/storage/emulated/0/Ringtones/
  * @param rootUri
- * [MediaStore.Files.getContentUri]
+ * [MediaStore.Files.getContentUri] MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
  * [MediaStore.Downloads.EXTERNAL_CONTENT_URI]
  * [MediaStore.Audio.Media.EXTERNAL_CONTENT_URI]
  * [MediaStore.Video.Media.EXTERNAL_CONTENT_URI]
  * [MediaStore.Images.Media.EXTERNAL_CONTENT_URI]
+ *
+ * @param mineType  response.body()?.contentType().toString()
+ *
  */
-fun insert(response: Response, rootUri: Uri, filename: String, relativePath: String, isAndroidQ: Boolean): Uri {
-    return if (isAndroidQ) {
-        val uri = rootUri.query(DownloadCache.getContext(), filename, relativePath)
+fun insert(mineType: String, rootUri: Uri, @NonNull filename: String, @Nullable relativePath: String?): Uri {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+
+        var uri: Uri? = null
+        if (relativePath == null) {
+            rootUri.queryByFileName(DownloadCache.getContext(), filename)
+        } else {
+            uri = rootUri.query(DownloadCache.getContext(), filename, relativePath)
+        }
         /*
          * 通过查找，要插入的Uri已经存在，就无需再次插入
          * 否则会出现新插入的文件，文件名被系统更改的现象，因为insert不会执行覆盖操作
          */
         if (uri != null) return uri
         ContentValues().run {
-            put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath) //下载到指定目录
+            if (!TextUtils.isEmpty(relativePath)) {
+                put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath) //下载到指定目录
+            }
             put(MediaStore.MediaColumns.DISPLAY_NAME, filename)   //文件名
             //取contentType响应头作为文件类型
-            put(MediaStore.MediaColumns.MIME_TYPE, response.body()?.contentType().toString())
+            put(MediaStore.MediaColumns.MIME_TYPE, mineType)
             DownloadCache.getContext().contentResolver.insert(rootUri, this)
             //当相同路径下的文件，在文件管理器中被手动删除时，就会插入失败
-        } ?: throw NullPointerException("Uri insert failed. Try changing filename")
+        } ?: throw IOException("Uri insert failed,$filename delete by User. Try changing filename")
     } else {
         val file = File("${Environment.getExternalStorageDirectory()}/$relativePath/$filename")
         Uri.fromFile(file)
@@ -146,7 +184,7 @@ fun insert(response: Response, rootUri: Uri, filename: String, relativePath: Str
 fun Uri.delete(): Boolean {
     return if (scheme == ContentResolver.SCHEME_FILE) {
         File(path).delete()
-    }else{
+    } else {
         DownloadCache.getContext().contentResolver.delete(this, null, null) > 0
     }
 }
