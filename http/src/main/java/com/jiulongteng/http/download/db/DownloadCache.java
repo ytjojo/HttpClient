@@ -130,7 +130,6 @@ public class DownloadCache implements BreakpointStore {
             allTasks.put(task.getUrl(), task);
             if (!runningQueue.offer(task)) {
                 pendingQueue.offer(task);
-                saveNewDownloadInfo(task);
             } else {
                 startTaskInternal(task);
             }
@@ -182,12 +181,6 @@ public class DownloadCache implements BreakpointStore {
 
     }
 
-    private void saveNewDownloadInfo(DownloadTask task) {
-        BreakpointInfo info = new BreakpointInfo(-1, task.getUrl(), null, task.getParentFile(),
-                task.getFilename(), task.isFilenameFromResponse());
-        task.setInfo(info);
-        breakpointStore.saveDownloadInfo(info);
-    }
 
     protected void startTaskInternal(DownloadTask task) {
         onStart(task);
@@ -255,8 +248,8 @@ public class DownloadCache implements BreakpointStore {
             return;
         }
 
-        if (deleteFile && task.getFile() != null && task.getFile().exists()) {
-            task.getFile().delete();
+        if (deleteFile && task.getTargetProvider().isExists()) {
+            task.getTargetProvider().delete();
             breakpointStore.deleteInfo(task.getInfo().getId());
         }
         pendingQueue.remove(task);
@@ -336,7 +329,7 @@ public class DownloadCache implements BreakpointStore {
     }
 
     public synchronized boolean isFileConflictAfterRun(@NonNull DownloadTask task) {
-        final File file = task.getFile();
+        final File file = task.getTargetProvider().getTargetFile();
         if (file == null) return false;
 
         ArrayList<DownloadTask> tasks = new ArrayList<>();
@@ -348,7 +341,7 @@ public class DownloadCache implements BreakpointStore {
                 continue;
             }
 
-            final File otherFile = downloadTask.getFile();
+            final File otherFile = downloadTask.getTargetProvider().getTargetFile();
             if (otherFile != null && file.equals(otherFile)) {
                 return true;
             }
