@@ -17,13 +17,16 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 
-public class DownloadUriOutputStream implements DownloadOutputStream {
+public class DownloadUriOutputStream extends DownloadOutputStream {
 
     @NonNull
     private final FileChannel channel;
-    @NonNull final ParcelFileDescriptor pdf;
-    @NonNull final BufferedOutputStream out;
-    @NonNull final FileOutputStream fos;
+    @NonNull
+    final ParcelFileDescriptor pdf;
+    @NonNull
+    final BufferedOutputStream out;
+    @NonNull
+    final FileOutputStream fos;
 
     public DownloadUriOutputStream(Context context, Uri uri, int bufferSize) throws
             FileNotFoundException {
@@ -38,7 +41,7 @@ public class DownloadUriOutputStream implements DownloadOutputStream {
 
     public DownloadUriOutputStream(Context context, File file, int bufferSize) throws
             FileNotFoundException {
-        this(context,Uri.fromFile(file),bufferSize);
+        this(context, Uri.fromFile(file), bufferSize);
     }
 
     DownloadUriOutputStream(@NonNull FileChannel channel, @NonNull ParcelFileDescriptor pdf,
@@ -48,6 +51,11 @@ public class DownloadUriOutputStream implements DownloadOutputStream {
         this.pdf = pdf;
         this.fos = fos;
         this.out = out;
+    }
+
+    @Override
+    public void write(int b) throws IOException {
+        out.write(b);
     }
 
     @Override
@@ -72,6 +80,7 @@ public class DownloadUriOutputStream implements DownloadOutputStream {
     public void seek(long offset) throws IOException {
         channel.position(offset);
     }
+
     @Override
     public void setLength(long newLength) {
         final String tag = "DownloadUriOutputStream";
@@ -89,7 +98,7 @@ public class DownloadUriOutputStream implements DownloadOutputStream {
                             Util.w(tag, "It can't pre-allocate length(" + newLength + ") on the sdk"
                                     + " version(" + Build.VERSION.SDK_INT + "), because of " + e1);
                         }
-                     }
+                    }
                 } else {
                     Util.w(tag, "It can't pre-allocate length(" + newLength + ") on the sdk"
                             + " version(" + Build.VERSION.SDK_INT + "), because of " + e);
