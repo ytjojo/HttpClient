@@ -131,6 +131,9 @@ dependencies {
     api ifecycle_viewmodel_ktx
     api lifecycle_service
 
+    api glide
+    annotationProcessor glideProcessor
+
 
 }
 configurations {

@@ -109,6 +109,9 @@ ext {
     ifecycle_viewmodel_ktx = "androidx.lifecycle:lifecycle-viewmodel-ktx:2.2.0"
     lifecycle_service = 'androidx.lifecycle:lifecycle-service:2.3.0-beta01'
 
+    glide = 'com.github.bumptech.glide:glide:4.12.0'
+    glideProcessor = 'com.github.bumptech.glide:compiler:4.12.0'
+
 }
 
 gradle.beforeProject {project->
