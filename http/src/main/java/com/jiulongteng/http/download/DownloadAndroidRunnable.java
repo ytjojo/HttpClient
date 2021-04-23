@@ -79,13 +79,15 @@ public class DownloadAndroidRunnable extends AbstractDownloadRunnable {
                 if (targetLength > blockInfo.getContentLength()) {
                     byteRead = blockInfo.getContentLength() - readLength;
                     outputStream.write(b, 0, (int) byteRead);
-                    addAndGetBufferedLength(byteRead);
                     readLength += byteRead;
+                    addAndGetBufferedLength(byteRead);
+                    notifyFetchData(byteRead);
                     break;
                 }
                 outputStream.write(b, 0, (int) byteRead);
-                addAndGetBufferedLength(byteRead);
                 readLength += byteRead;
+                addAndGetBufferedLength(byteRead);
+                notifyFetchData(byteRead);
             }
 
             setIsReadByteFinished(true);
@@ -113,6 +115,7 @@ public class DownloadAndroidRunnable extends AbstractDownloadRunnable {
             okhttp3.internal.Util.closeQuietly(responseBody);
         }
     }
+
 
     private Response singleDownload(BreakpointInfo info, Response response) throws IOException {
         if (info.getBlockCount() == 1 && !info.isChunked()) {

@@ -99,7 +99,6 @@ public abstract class AbstractDownloadRunnable implements Runnable {
     }
 
     public long addAndGetBufferedLength(long delta) {
-        task.getFlushRunnable().flush(this, delta);
         return bufferedLength.addAndGet(delta);
     }
 
@@ -113,5 +112,11 @@ public abstract class AbstractDownloadRunnable implements Runnable {
 
     public int getByteBufferSize() {
         return 8096;
+    }
+
+
+    public void notifyFetchData(long byteRead){
+        task.getFlushRunnable().flush(this, byteRead);
+        task.getCallbackDispatcher().fetchProgress(task,byteRead);
     }
 }

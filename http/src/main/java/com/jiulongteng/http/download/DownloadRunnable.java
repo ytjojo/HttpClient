@@ -37,8 +37,8 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
 
         ResponseBody responseBody = null;
         try {
-            if(!DownloadCache.getInstance().isNetPolicyValid(task)){
-                throw new DownloadException(DownloadException.NETWORK_POLICY_ERROR,"invalid network state");
+            if (!DownloadCache.getInstance().isNetPolicyValid(task)) {
+                throw new DownloadException(DownloadException.NETWORK_POLICY_ERROR, "invalid network state");
             }
             Request rangeRequest = task.getRawRequest().newBuilder().header(Util.RANGE, "bytes=" + blockInfo.getRangeLeft() + "-" + blockInfo.getRangeRight()).build();
             if (!TextUtils.isEmpty(task.getRedirectLocation())) {
@@ -67,11 +67,11 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
             byte[] b = new byte[getByteBufferSize()];
             while ((byteRead = bis.read(b)) != -1) {
                 if (task.isStoped()) {
-                    Util.i(TAG," ----found stop");
+                    Util.i(TAG, " ----found stop");
                     break;
                 }
-                if(!DownloadCache.getInstance().isNetPolicyValid(task)){
-                    throw new DownloadException(DownloadException.NETWORK_POLICY_ERROR,"invalid network state");
+                if (!DownloadCache.getInstance().isNetPolicyValid(task)) {
+                    throw new DownloadException(DownloadException.NETWORK_POLICY_ERROR, "invalid network state");
                 }
 
 
@@ -79,13 +79,15 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
                 if (targetLength > blockInfo.getContentLength()) {
                     byteRead = blockInfo.getContentLength() - readLength;
                     bytebuffer.put(b, 0, (int) byteRead);
-                    addAndGetBufferedLength(byteRead);
                     readLength += byteRead;
+                    addAndGetBufferedLength(byteRead);
+                    notifyFetchData(byteRead);
                     break;
                 }
                 bytebuffer.put(b, 0, (int) byteRead);
-                addAndGetBufferedLength(byteRead);
                 readLength += byteRead;
+                addAndGetBufferedLength(byteRead);
+                notifyFetchData(byteRead);
             }
 
             setIsReadByteFinished(true);
@@ -99,14 +101,13 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
                     }
                 }
             }
-            Util.i(TAG,"   parkThread");
+            Util.i(TAG, "   parkThread");
             parkThread();
 
-        } catch (Exception e){
+        } catch (Exception e) {
             task.setThrowable(e);
-        }
-        finally {
-            Util.i(TAG,"  finally");
+        } finally {
+            Util.i(TAG, "  finally");
             okhttp3.internal.Util.closeQuietly(fileChannel);
             okhttp3.internal.Util.closeQuietly(raf);
             okhttp3.internal.Util.closeQuietly(bis);
@@ -148,7 +149,7 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
 
 
     public void inspect(Response response) throws IOException {
-        Util.d(TAG, getIndex() + "  response" +response.body().contentLength() +  " contentLength " +DownloadUtils.getExactContentLengthRangeFrom0(response.headers()) + " exactContentLengthRange " + blockInfo.getContentLength());
+        Util.d(TAG, getIndex() + "  response" + response.body().contentLength() + " contentLength " + DownloadUtils.getExactContentLengthRangeFrom0(response.headers()) + " exactContentLengthRange " + blockInfo.getContentLength());
         final BlockInfo blockInfo = getBlockInfo();
         final int code = response.code();
         final String newEtag = response.header(Util.ETAG);
@@ -184,12 +185,12 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
     @Override
     public long flush() throws IOException {
         final long buffered = getBufferedLength();
-        if ( buffered > 0) {
+        if (buffered > 0) {
             bytebuffer.force();
             raf.getFD().sync();
             blockInfo.increaseCurrentOffset(buffered);
             addAndGetBufferedLength(-buffered);
-            DownloadCache.getInstance().updateBlockInfo(blockInfo.getId(),blockInfo.getCurrentOffset());
+            DownloadCache.getInstance().updateBlockInfo(blockInfo.getId(), blockInfo.getCurrentOffset());
             return buffered;
         }
 
@@ -207,9 +208,6 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
         bytebuffer.clear();
         bytebuffer = null;
     }
-
-
-
 
 
 }
