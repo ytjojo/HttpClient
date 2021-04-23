@@ -100,7 +100,7 @@ public class CallbackDispatcher implements DownloadListener {
 
     @Override
     public void taskEnd(@NonNull DownloadTask task, @NonNull EndCause cause, @Nullable Throwable realCause) {
-        fetchProgress(task);
+        fetchProgress(task,-1);
         if (uiHandler != null) {
             uiHandler.post(new Runnable() {
                 @Override
@@ -114,7 +114,13 @@ public class CallbackDispatcher implements DownloadListener {
         }
     }
 
-    public void fetchProgress(@NonNull DownloadTask task) {
+    public void fetchProgress(@NonNull DownloadTask task,long increaseBytes) {
+        if(increaseBytes < 0){
+            speedCalculator.endTask();;
+        }else {
+            speedCalculator.downloading(increaseBytes);
+        }
+
         if (isFetchProcessMoment() || task.getTaskStatus() != DownloadCache.RUNNING) {
             final long lastTime = lastCallbackProcessTime.get();
             final long currentTime = nowMillis();
@@ -126,10 +132,9 @@ public class CallbackDispatcher implements DownloadListener {
             long contentLength = task.getInfo().getTotalLength();
             int currentProgress = (int) (offset * 100 / contentLength);
             long timeCost = currentTime - lastTime;
-            long increaseBytes = offset - lastOffset.get();
+            increaseBytes = offset - lastOffset.get();
             long speed = (increaseBytes * 1000L / timeCost);
-
-            dispatchSpeed(task, increaseBytes);
+            dispatchSpeed(task);
             this.fetchProgress(task, currentProgress, offset, contentLength, speed);
             lastOffset.set(offset);
             lastCallbackProcessTime.set(currentTime);
@@ -137,19 +142,16 @@ public class CallbackDispatcher implements DownloadListener {
 
     }
 
-    private void dispatchSpeed(final DownloadTask task, final long increaseBytes) {
+    private void dispatchSpeed(final DownloadTask task) {
         if (task.getSpeedListener() != null) {
-
             if (uiHandler != null) {
                 uiHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        speedCalculator.downloading(increaseBytes);
                         task.getSpeedListener().onProgress(task, speedCalculator);
                     }
                 });
             } else {
-                speedCalculator.downloading(increaseBytes);
                 task.getSpeedListener().onProgress(task, speedCalculator);
             }
 
