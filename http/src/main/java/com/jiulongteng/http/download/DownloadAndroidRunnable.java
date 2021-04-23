@@ -182,7 +182,7 @@ public class DownloadAndroidRunnable extends AbstractDownloadRunnable {
     }
 
     @Override
-    public void flush() throws IOException {
+    public long flush() throws IOException {
         final long buffered = getBufferedLength();
         if ( buffered > 0) {
             outputStream.flushAndSync();
@@ -190,7 +190,9 @@ public class DownloadAndroidRunnable extends AbstractDownloadRunnable {
             addAndGetBufferedLength(-buffered);
             Util.i(TAG,"index " +getIndex() + " flush " + buffered + " currentOffset "+ blockInfo.getCurrentOffset());
             DownloadCache.getInstance().updateBlockInfo(blockInfo.getId(), blockInfo.getCurrentOffset());
+            return buffered;
         }
+        return 0;
 
 
     }

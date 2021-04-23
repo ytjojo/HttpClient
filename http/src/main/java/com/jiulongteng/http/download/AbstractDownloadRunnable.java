@@ -32,7 +32,7 @@ public abstract class AbstractDownloadRunnable implements Runnable {
         return index;
     }
 
-    public abstract void flush() throws IOException;
+    public abstract long flush() throws IOException;
 
 
     public DownloadTask getTask() {
