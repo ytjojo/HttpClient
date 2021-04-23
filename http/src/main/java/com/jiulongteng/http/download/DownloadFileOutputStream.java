@@ -15,11 +15,9 @@ public class DownloadFileOutputStream extends DownloadOutputStream{
 
     private FileChannel fileChannel;
     RandomAccessFile raf;
-    ByteBuffer byteBuffer;
     public DownloadFileOutputStream(File file) throws FileNotFoundException {
         raf = new RandomAccessFile(file, "rwd");
         fileChannel = raf.getChannel();
-        byteBuffer =  ByteBuffer.allocateDirect(8096);
 //            fileChannel.position(blockInfo.getRangeLeft());
     }
 
@@ -49,9 +47,12 @@ public class DownloadFileOutputStream extends DownloadOutputStream{
 
     @Override
     public void write(byte[] b, int off, int len) throws IOException {
-        byteBuffer.flip();
-        byteBuffer.put(b,off,len);
+        ByteBuffer byteBuffer = ByteBuffer.wrap(b,off,len);
         fileChannel.write(byteBuffer);
-        byteBuffer.clear();
+    }
+
+    @Override
+    public void close() throws IOException {
+        raf.close();
     }
 }

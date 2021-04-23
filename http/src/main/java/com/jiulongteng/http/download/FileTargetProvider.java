@@ -40,7 +40,7 @@ public class FileTargetProvider implements TargetProvider<File> {
 
     @Override
     public DownloadOutputStream getOutputStream() throws IOException {
-        return new DownloadUriOutputStream(DownloadCache.getContext(),targetFile,8096);
+        return new DownloadFileOutputStream(targetFile);
     }
 
     @Override
@@ -56,11 +56,15 @@ public class FileTargetProvider implements TargetProvider<File> {
         final long requireSpace = length - getTargetFile().length();
         if (requireSpace > 0) {
             if(DownloadCache.getInstance().isAndroid()){
-                StatFs statFs = new StatFs(getTargetFile().getAbsolutePath());
-                final long freeSpace = Util.getFreeSpaceBytes(statFs);
-                if (freeSpace < requireSpace) {
-                    throw new DownloadException(DownloadException.PROTOCOL_ERROR, "There is Free space less than Require space: " + freeSpace + " < " + requireSpace);
+                try{
+                    StatFs statFs = new StatFs(getTargetFile().getAbsolutePath());
+                    final long freeSpace = Util.getFreeSpaceBytes(statFs);
+                    if (freeSpace < requireSpace) {
+                        throw new DownloadException(DownloadException.PROTOCOL_ERROR, "There is Free space less than Require space: " + freeSpace + " < " + requireSpace);
+                    }
+                }catch (IllegalArgumentException e){
                 }
+
             }
             DownloadUtils.allocateLength(getTargetFile(), length);
         }
@@ -69,13 +73,13 @@ public class FileTargetProvider implements TargetProvider<File> {
     @Override
     public boolean createNewTarget(String mineType) throws IOException {
 
-        if (parentFile.exists()) {
+        if (!parentFile.exists()) {
             parentFile.mkdirs();
         }
         if (!targetFile.exists()) {
             return targetFile.createNewFile();
         }
-        return true;
+        return targetFile.exists();
 
     }
 
