@@ -9,12 +9,14 @@ import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.StatFs;
+import android.os.SystemClock;
 import android.provider.OpenableColumns;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.jiulongteng.http.download.db.DownloadCache;
 import com.jiulongteng.http.download.entry.BlockInfo;
 
 import java.io.File;
@@ -388,6 +390,14 @@ public class Util {
             w("resetBlockIfDirty", "block is dirty so have to reset: " + info);
             info.resetBlock();
         }
+    }
+
+
+    public static long nowMillis() {
+        if (DownloadCache.getInstance().isAndroid()) {
+            return SystemClock.uptimeMillis();
+        }
+        return System.nanoTime() / 1000000;
     }
 
 
