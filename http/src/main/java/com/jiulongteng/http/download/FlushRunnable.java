@@ -122,15 +122,15 @@ public class FlushRunnable implements Runnable {
     }
 
     private boolean resetNextParkMills(boolean needSyncBuffer){
-        if (!needSyncBuffer) {
-            nextParkMills = syncBufferIntervalMills;
-        } else {
+        if (needSyncBuffer) {
             nextParkMills = getNextParkMillisecond();
             if (nextParkMills <= 0) {
                 nextParkMills = syncBufferIntervalMills;
             }else {
                 return false;
             }
+        } else {
+            nextParkMills = syncBufferIntervalMills;
 
         }
         return needSyncBuffer;
