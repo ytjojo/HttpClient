@@ -22,6 +22,8 @@ import com.bumptech.glide.load.model.GlideUrl;
 import com.jiulongteng.http.download.DownloadListener;
 import com.jiulongteng.http.download.DownloadTask;
 import com.jiulongteng.http.download.FileTargetProvider;
+import com.jiulongteng.http.download.SpeedCalculator;
+import com.jiulongteng.http.download.SpeedListener;
 import com.jiulongteng.http.download.TargetProvider;
 import com.jiulongteng.http.download.UriTargetProvider;
 import com.jiulongteng.http.download.Util;
@@ -150,6 +152,12 @@ public class MainActivity extends Activity {
                         Util.e(TAG,"error" ,realCause);
                     }
                     Util.i(TAG,cause.toString() +"  taskEnd  stop =" + (System.currentTimeMillis()   - stop)  + "  total = " +  + (System.currentTimeMillis() - start));
+                }
+            });
+            downloadTask.setSpeedListener(new SpeedListener() {
+                @Override
+                public void onProgress(DownloadTask task, SpeedCalculator speedCalculator) {
+                    Util.i(TAG,speedCalculator.averageSpeed() + "  "+ speedCalculator.getSpeedWithSIAndFlush()+ "  "+ speedCalculator.getSpeedWithBinaryAndFlush());
                 }
             });
         }
