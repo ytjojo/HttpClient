@@ -116,7 +116,7 @@ public class FlushRunnable implements Runnable {
                 allNoSyncLength.addAndGet(-allIncreaseLength);
                 lastSyncTimestamp = Util.nowMillis();
             }
-            task.getCallbackDispatcher().fetchProgress(task);
+
         }
 
     }
