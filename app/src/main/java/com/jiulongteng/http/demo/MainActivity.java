@@ -157,7 +157,7 @@ public class MainActivity extends Activity {
             downloadTask.setSpeedListener(new SpeedListener() {
                 @Override
                 public void onProgress(DownloadTask task, SpeedCalculator speedCalculator) {
-                    Util.i(TAG,speedCalculator.averageSpeed() + "  "+ speedCalculator.getSpeedWithSIAndFlush()+ "  "+ speedCalculator.getSpeedWithBinaryAndFlush());
+                    Util.i(TAG,"averageSpeed" + speedCalculator.averageSpeed() + "  "+ speedCalculator.speedFromBegin()+ "  "+ speedCalculator.instantSpeed());
                 }
             });
         }
