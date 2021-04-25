@@ -100,7 +100,8 @@ public class CallbackDispatcher implements DownloadListener {
 
     @Override
     public void taskEnd(@NonNull DownloadTask task, @NonNull EndCause cause, @Nullable Throwable realCause) {
-        fetchProgress(task,-1);
+        speedCalculator.endTask();
+        notifyFetchProgress(task);
         if (uiHandler != null) {
             uiHandler.post(new Runnable() {
                 @Override
@@ -114,32 +115,22 @@ public class CallbackDispatcher implements DownloadListener {
         }
     }
 
-    public void fetchProgress(@NonNull DownloadTask task,long increaseBytes) {
-        if(increaseBytes < 0){
-            speedCalculator.endTask();;
-        }else {
-            speedCalculator.downloading(increaseBytes);
-        }
-
+    public void fetchProgress(@NonNull DownloadTask task, long increaseBytes) {
+        speedCalculator.downloading(increaseBytes);
+        lastOffset.addAndGet(increaseBytes);
         if (isFetchProcessMoment() || task.getTaskStatus() != DownloadCache.RUNNING) {
-            final long lastTime = lastCallbackProcessTime.get();
-            final long currentTime = nowMillis();
-
-            long offset = task.getInfo().getTotalOffset();
-            if (offset == lastOffset.get()) {
-                return;
-            }
-            long contentLength = task.getInfo().getTotalLength();
-            int currentProgress = (int) (offset * 100 / contentLength);
-            long timeCost = currentTime - lastTime;
-            increaseBytes = offset - lastOffset.get();
-            long speed = (increaseBytes * 1000L / timeCost);
-            dispatchSpeed(task);
-            this.fetchProgress(task, currentProgress, offset, contentLength, speed);
-            lastOffset.set(offset);
-            lastCallbackProcessTime.set(currentTime);
+           notifyFetchProgress(task);
         }
 
+    }
+    private void notifyFetchProgress(DownloadTask task){
+        final long currentTime = nowMillis();
+        long offset = lastOffset.get();
+        long contentLength = task.getInfo().getTotalLength();
+        int currentProgress = (int) (offset * 100 / contentLength);
+        dispatchSpeed(task);
+        this.fetchProgress(task, currentProgress, offset, contentLength, speedCalculator.getBytesPerSecondFromBegin());
+        lastCallbackProcessTime.set(currentTime);
     }
 
     private void dispatchSpeed(final DownloadTask task) {

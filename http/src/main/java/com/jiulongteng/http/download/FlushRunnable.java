@@ -32,7 +32,7 @@ public class FlushRunnable implements Runnable {
 
     HashSet<Integer> finishedIndex = new HashSet<>();
     Runnable finishRunnable;
-    long syncBufferIntervalMills = 300;
+    long syncBufferIntervalMills = 2000;
     long nextParkMills = syncBufferIntervalMills;
     long lastSyncTimestamp;
 
@@ -84,25 +84,30 @@ public class FlushRunnable implements Runnable {
 
     private void flushAll() {
         boolean needSyncBuffer = allNoSyncLength.get() >= DownloadCache.getInstance().getSyncBufferSize();
-        boolean synced = false;
         long allIncreaseLength = 0;
+        boolean isReadByteFinished = false;
+        boolean synced = false;
+        for (int i = 0; i < task.getRunnableSize(); i++) {
+            AbstractDownloadRunnable downloadRunnable = downloadRunnableMap.get(i);
+            if (downloadRunnable != null) {
+                isReadByteFinished |= downloadRunnable.getIsReadByteFinished();
+            }
+        }
+        needSyncBuffer = resetNextParkMills(needSyncBuffer);
         for (int i = 0; i < task.getRunnableSize(); i++) {
             AbstractDownloadRunnable downloadRunnable = downloadRunnableMap.remove(i);
             if (downloadRunnable != null) {
-                boolean isReadByteFinished = downloadRunnable.getIsReadByteFinished();
                 try {
-                    if (isReadByteFinished || needSyncBuffer) {
+                    if (needSyncBuffer || isReadByteFinished) {
                         synced = true;
                         long noSyncLength = downloadRunnable.flush();
-                        if (needSyncBuffer) {
-                            allIncreaseLength += noSyncLength;
-                        }
+                        allIncreaseLength += noSyncLength;
                     }
                 } catch (IOException e) {
                     Util.e(TAG, "buffered " + downloadRunnable.getBufferedLength() + " AbstractDownloadRunnable flush error index = " + downloadRunnable.getIndex(), e);
                     e.printStackTrace();
                 } finally {
-                    if (isReadByteFinished) {
+                    if (downloadRunnable.getIsReadByteFinished()) {
                         finishedIndex.add(i);
                         downloadRunnable.unPark();
                         Util.i(TAG, "  finishSize = " + finishedIndex.size() + "  index = " + downloadRunnable.getIndex());
@@ -112,11 +117,9 @@ public class FlushRunnable implements Runnable {
         }
 
         if (synced) {
-            if (needSyncBuffer) {
-                allNoSyncLength.addAndGet(-allIncreaseLength);
-                lastSyncTimestamp = Util.nowMillis();
-            }
-
+            allNoSyncLength.addAndGet(-allIncreaseLength);
+            Util.i(TAG,"sync interval  = " +( Util.nowMillis() - lastSyncTimestamp));
+            lastSyncTimestamp = Util.nowMillis();
         }
 
     }
@@ -124,10 +127,10 @@ public class FlushRunnable implements Runnable {
     private boolean resetNextParkMills(boolean needSyncBuffer){
         if (needSyncBuffer) {
             nextParkMills = getNextParkMillisecond();
-            if (nextParkMills <= 0) {
-                nextParkMills = syncBufferIntervalMills;
-            }else {
+            if (nextParkMills > 0) {
                 return false;
+            }else {
+                nextParkMills = syncBufferIntervalMills;
             }
         } else {
             nextParkMills = syncBufferIntervalMills;
