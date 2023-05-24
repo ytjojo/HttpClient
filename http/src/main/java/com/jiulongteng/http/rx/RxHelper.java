@@ -3,6 +3,7 @@ package com.jiulongteng.http.rx;
 
 import androidx.lifecycle.GenericLifecycleObserver;
 import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.LifecycleEventObserver;
 import androidx.lifecycle.LifecycleOwner;
 
 import com.jiulongteng.http.exception.AuthException;
@@ -181,7 +182,7 @@ public class RxHelper {
                 if (owner.getLifecycle().getCurrentState().equals(Lifecycle.State.DESTROYED)) {
                     return;
                 }
-                owner.getLifecycle().addObserver(new GenericLifecycleObserver() {
+                owner.getLifecycle().addObserver(new LifecycleEventObserver() {
                     @Override
                     public void onStateChanged(LifecycleOwner source, Lifecycle.Event event) {
                         e.onNext(event);

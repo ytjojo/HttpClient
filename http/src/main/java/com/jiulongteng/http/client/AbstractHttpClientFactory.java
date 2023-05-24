@@ -12,16 +12,19 @@ import java.util.concurrent.TimeUnit;
 import okhttp3.OkHttpClient;
 
 public abstract class AbstractHttpClientFactory implements IHttpClientFactory {
-    OkHttpClient baseOkHttpClient;
+
+    private OkHttpClient baseOkHttpClient;
 
     private boolean isShowLog = true;
-    ConcurrentHashMap<Object, AbstractClient> clientsByTag = new ConcurrentHashMap<Object, AbstractClient>();
+    private ConcurrentHashMap<Object, AbstractClient> clientsByTag = new ConcurrentHashMap<Object, AbstractClient>();
 
-    ConcurrentHashMap<String, AbstractClient> clientsByUrl = new ConcurrentHashMap<String, AbstractClient>();
+    private ConcurrentHashMap<String, AbstractClient> clientsByUrl = new ConcurrentHashMap<String, AbstractClient>();
 
     private static Context sContext;
 
-    AbstractClient defaultClient;
+    private AbstractClient defaultClient;
+
+    private IHttpClientBuilder httpClientBuilder;
 
     public AbstractClient createByTag(Object tag) {
         if (httpClientBuilder != null) {
@@ -65,6 +68,7 @@ public abstract class AbstractHttpClientFactory implements IHttpClientFactory {
     }
 
 
+    @Override
     public boolean isShowLog() {
         return isShowLog;
     }
@@ -97,7 +101,7 @@ public abstract class AbstractHttpClientFactory implements IHttpClientFactory {
         abstractClient.attachToFactory(this);
     }
 
-    private IHttpClientBuilder httpClientBuilder;
+
 
     public void setHttpClientBuilder(IHttpClientBuilder httpClientBuilder) {
         this.httpClientBuilder = httpClientBuilder;
@@ -109,7 +113,7 @@ public abstract class AbstractHttpClientFactory implements IHttpClientFactory {
 
     @Override
     @NonNull
-    public AbstractClient getDefaultClient() {
+    public synchronized AbstractClient getDefaultClient() {
         if(defaultClient != null){
             return defaultClient;
         }
