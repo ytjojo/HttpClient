@@ -1,18 +1,32 @@
 package com.jiulongteng.http.download.db;
 
-import androidx.annotation.NonNull;
+import android.content.Context;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import com.jiulongteng.http.download.DownloadPostTreatment;
 import com.jiulongteng.http.download.DownloadTask;
+import com.jiulongteng.http.download.IInspectNetPolicy;
+import com.jiulongteng.http.download.Util;
 import com.jiulongteng.http.download.cause.EndCause;
 import com.jiulongteng.http.download.entry.BlockInfo;
 import com.jiulongteng.http.download.entry.BreakpointInfo;
 
 import java.io.File;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
+import okhttp3.internal.platform.Platform;
+
 
 public class DownloadCache implements BreakpointStore {
 
@@ -20,11 +34,20 @@ public class DownloadCache implements BreakpointStore {
     public static final int RUNNING = 1;
     public static final int COMPLETE = 2;
     public static final int STOP = 3;
+    volatile ExecutorService executorService;
     private int maxRunningTaskCount = 5;
     private volatile static DownloadCache sInstance;
+    private int progressDispatchInterval = 300;
     private ConcurrentHashMap<String, DownloadTask> allTasks = new ConcurrentHashMap<>();
     private ConcurrentLinkedDeque<DownloadTask> pendingQueue = new ConcurrentLinkedDeque<>();
     private LinkedBlockingQueue<DownloadTask> runningQueue = new LinkedBlockingQueue<>(maxRunningTaskCount);
+
+    private int syncBufferSize = 65536;
+
+    private boolean isAndroid = Platform.isAndroid();
+
+    private static Context sContext;
+    IInspectNetPolicy inspectNetPolicy;
     private BreakpointStore breakpointStore = new BreakpointStore() {
         @Override
         public void saveBlockInfo(List<BlockInfo> blockInfo, BreakpointInfo breakpointInfo) {
@@ -32,7 +55,7 @@ public class DownloadCache implements BreakpointStore {
         }
 
         @Override
-        public List<BlockInfo> getBlockInfo(BreakpointInfo info) {
+        public List<BlockInfo> loadBlockInfo(BreakpointInfo info) {
             return null;
         }
 
@@ -52,7 +75,7 @@ public class DownloadCache implements BreakpointStore {
         }
 
         @Override
-        public BreakpointInfo getDownloadInfo(String url) {
+        public BreakpointInfo loadDownloadInfo(String url) {
             return null;
         }
 
@@ -60,7 +83,22 @@ public class DownloadCache implements BreakpointStore {
         public void updateDownloadInfo(BreakpointInfo info) {
 
         }
+
+        @Override
+        public List<BreakpointInfo> loadAllDownloadInfo() {
+            return null;
+        }
     };
+
+    public static void setContext(Context context) {
+        sContext = context;
+        Dao.init(context);
+        DownloadCache.getInstance().setBreakpointStore(Dao.getInstance());
+    }
+
+    public static Context getContext() {
+        return sContext;
+    }
 
     public static DownloadCache getInstance() {
         if (sInstance == null) {
@@ -73,28 +111,85 @@ public class DownloadCache implements BreakpointStore {
         return sInstance;
     }
 
+    public void enqueueTask(DownloadTask task) {
+        getExecutorService().execute(new Runnable() {
+            @Override
+            public void run() {
+                enqueueInternal(task);
+            }
+        });
+    }
 
-    public synchronized void add(DownloadTask task) {
+
+    public synchronized void enqueueInternal(DownloadTask task) {
+        if (checkSameTask(task)) {
+            task.getCallbackDispatcher().taskEnd(task, EndCause.SAME_TASK_BUSY, null);
+            return;
+        }
         if (!allTasks.containsKey(task.getUrl())) {
             allTasks.put(task.getUrl(), task);
             if (!runningQueue.offer(task)) {
                 pendingQueue.offer(task);
             } else {
-                submitTask(task);
+                startTaskInternal(task);
             }
-        }else {
-            task.getCallbackDispatcher().taskEnd(task, EndCause.SAME_TASK_BUSY,null);
+        } else {
+            ArrayList<DownloadTask> pendingList = new ArrayList<>();
+            pendingList.addAll(pendingQueue);
+            ArrayList<DownloadTask> runningList = new ArrayList<>();
+            runningList.addAll(runningQueue);
+            if (pendingList.contains(task) || runningList.contains(task)) {
+                return;
+            }
+            if (task.getTaskStatus() != RUNNING && runningQueue.offer(task)) {
+                startTaskInternal(task);
+            }
+
         }
     }
 
-    private void submitTask(DownloadTask task) {
+    public synchronized boolean checkSameTask(DownloadTask task) {
+        ArrayList<DownloadTask> tasks = new ArrayList<>();
+        tasks.addAll(allTasks.values());
+        for (DownloadTask other : tasks) {
+            if (task == other) {
+                continue;
+            }
+            if (other.equals(task)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean submitTask(DownloadTask task) {
+        if (allTasks.containsKey(task.getUrl())) {
+            if (runningQueue.offer(task)) {
+                getExecutorService().execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        startTaskInternal(task);
+                    }
+                });
+                return true;
+            } else {
+                pendingQueue.offer(task);
+                return true;
+            }
+        }
+        return false;
+
+    }
+
+
+    protected void startTaskInternal(DownloadTask task) {
         onStart(task);
         task.execute();
 
     }
 
 
-    public void onStart(DownloadTask task) {
+    private void onStart(DownloadTask task) {
         task.setStatus(RUNNING);
     }
 
@@ -102,32 +197,32 @@ public class DownloadCache implements BreakpointStore {
         task.setStatus(COMPLETE);
         allTasks.remove(task.getUrl());
         runningQueue.remove(task);
-        if (startNext && runningQueue.remove(task)) {
+        if (startNext) {
             startNext();
         }
     }
 
     public void onStop(DownloadTask task, boolean startNext) {
         task.setStatus(STOP);
-        allTasks.remove(task.getUrl());
         runningQueue.remove(task);
-        if (startNext && runningQueue.remove(task)) {
+        pendingQueue.remove(task);
+        if (startNext) {
             startNext();
         }
     }
 
-    public void startNext() {
+    private void startNext() {
         DownloadTask next = pendingQueue.peek();
         if (next != null) {
             if (runningQueue.offer(next)) {
                 pendingQueue.remove(next);
-                submitTask(next);
+                startTaskInternal(next);
             }
 
         }
     }
 
-    public void onStopAllTasks() {
+    public void stopAllTasks() {
         if (runningQueue.size() == 0) {
             return;
         }
@@ -136,23 +231,29 @@ public class DownloadCache implements BreakpointStore {
         deque.addAll(runningQueue);
         DownloadTask task = null;
         while ((task = deque.pollLast()) != null) {
-            task.setStatus(STOP);
-            pendingQueue.offerFirst(task);
+            task.stop();
         }
 
     }
 
     public void remove(DownloadTask task, boolean deleteFile) {
-        if (runningQueue.contains(task)) {
+        if (task.getTaskStatus() == RUNNING) {
+            task.setPostTreatment(new DownloadPostTreatment() {
+                @Override
+                public void onEnd(DownloadTask task, @NonNull EndCause cause, @Nullable Throwable realCause) {
+                    remove(task, deleteFile);
+                }
+            });
+            task.stop();
             return;
         }
-        breakpointStore.deleteInfo(task.getInfo().getId());
-        if (deleteFile && task.getFile() != null && task.getFile().exists()) {
-            task.getFile().delete();
+
+        if (deleteFile && task.getTargetProvider().isExists()) {
+            task.getTargetProvider().delete();
+            breakpointStore.deleteInfo(task.getInfo().getId());
         }
         pendingQueue.remove(task);
         allTasks.remove(task.getUrl());
-        breakpointStore.deleteInfo(task.getInfo().getId());
     }
 
     public void remove(String url, boolean deleteFile) {
@@ -164,11 +265,23 @@ public class DownloadCache implements BreakpointStore {
     }
 
     public void removeAll(boolean deleteFile) {
-
+        stopAllTasks();
+        ArrayList<DownloadTask> tasks = new ArrayList<>();
+        tasks.addAll(allTasks.values());
+        runningQueue.clear();
+        pendingQueue.clear();
+        allTasks.clear();
+        for (DownloadTask task : tasks) {
+            remove(task, deleteFile);
+        }
     }
 
     public void setMaxRunningTaskCount(int maxRunningTaskCount) {
+        if (!runningQueue.isEmpty()) {
+            return;
+        }
         this.maxRunningTaskCount = maxRunningTaskCount;
+        this.runningQueue = new LinkedBlockingQueue<>(maxRunningTaskCount);
     }
 
     @Override
@@ -177,8 +290,8 @@ public class DownloadCache implements BreakpointStore {
     }
 
     @Override
-    public List<BlockInfo> getBlockInfo(BreakpointInfo info) {
-        return breakpointStore.getBlockInfo(info);
+    public List<BlockInfo> loadBlockInfo(BreakpointInfo info) {
+        return breakpointStore.loadBlockInfo(info);
     }
 
     @Override
@@ -197,8 +310,8 @@ public class DownloadCache implements BreakpointStore {
     }
 
     @Override
-    public BreakpointInfo getDownloadInfo(String url) {
-        return breakpointStore.getDownloadInfo(url);
+    public BreakpointInfo loadDownloadInfo(String url) {
+        return breakpointStore.loadDownloadInfo(url);
     }
 
     @Override
@@ -206,26 +319,80 @@ public class DownloadCache implements BreakpointStore {
         breakpointStore.updateDownloadInfo(info);
     }
 
+    @Override
+    public List<BreakpointInfo> loadAllDownloadInfo() {
+        return breakpointStore.loadAllDownloadInfo();
+    }
+
     public void setBreakpointStore(BreakpointStore breakpointStore) {
         this.breakpointStore = breakpointStore;
     }
 
     public synchronized boolean isFileConflictAfterRun(@NonNull DownloadTask task) {
-        final File file = task.getFile();
+        final File file = task.getTargetProvider().getTargetFile();
         if (file == null) return false;
 
+        ArrayList<DownloadTask> tasks = new ArrayList<>();
+        tasks.addAll(allTasks.values());
+
         // Other one is running, cancel the current task.
-        for (DownloadTask downloadTask : allTasks.values()) {
+        for (DownloadTask downloadTask : tasks) {
             if (downloadTask == task) {
                 continue;
             }
 
-            final File otherFile = downloadTask.getFile();
+            final File otherFile = downloadTask.getTargetProvider().getTargetFile();
             if (otherFile != null && file.equals(otherFile)) {
                 return true;
             }
         }
         return false;
 
+    }
+
+    public void setProgressDispatchInterval(int progressDispatchInterval) {
+        this.progressDispatchInterval = progressDispatchInterval;
+    }
+
+    public int getProgressDispatchInterval() {
+        return progressDispatchInterval;
+    }
+
+
+    synchronized ExecutorService getExecutorService() {
+        if (executorService == null) {
+            executorService = new ThreadPoolExecutor(0, Integer.MAX_VALUE,
+                    60, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(),
+                    Util.threadFactory("Download manager", false));
+        }
+
+        return executorService;
+    }
+
+    public void setSyncBufferSize(int syncBufferSize) {
+        this.syncBufferSize = syncBufferSize;
+    }
+
+    public int getSyncBufferSize() {
+        return syncBufferSize;
+    }
+
+    public boolean isAndroid() {
+        return isAndroid;
+    }
+
+    public IInspectNetPolicy getInspectNetPolicy() {
+        return inspectNetPolicy;
+    }
+
+    public void setInspectNetPolicy(IInspectNetPolicy inspectNetPolicy) {
+        this.inspectNetPolicy = inspectNetPolicy;
+    }
+
+    public boolean isNetPolicyValid(DownloadTask task) {
+        if (inspectNetPolicy != null) {
+            return inspectNetPolicy.isNetPolicyValid(task);
+        }
+        return true;
     }
 }

@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.concurrent.atomic.AtomicLong;
 
 import okhttp3.Request;
 import okhttp3.Response;
@@ -21,18 +20,13 @@ import okhttp3.ResponseBody;
 public class DownloadRunnable extends AbstractDownloadRunnable {
     private final static String TAG = "DownloadRunnable";
     private MappedByteBuffer bytebuffer;//内存映射缓冲区
-    private long bufferMax; //缓冲区允许放置的字节级数据量
-    private AtomicLong bufferedLength;    //缓冲区中未刷入内存的大小即缓冲区写入模式下的起始位置
     private FileChannel fileChannel;
 
-
-    long readLength;
     RandomAccessFile raf;
 
 
     public DownloadRunnable(DownloadTask task, BlockInfo info, int index) {
         super(task, info, index);
-        this.bufferMax = 512 * 1024;    //设置允许的512KB的缓存数
     }
 
 
@@ -43,6 +37,9 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
 
         ResponseBody responseBody = null;
         try {
+            if (!DownloadCache.getInstance().isNetPolicyValid(task)) {
+                throw new DownloadException(DownloadException.NETWORK_POLICY_ERROR, "invalid network state");
+            }
             Request rangeRequest = task.getRawRequest().newBuilder().header(Util.RANGE, "bytes=" + blockInfo.getRangeLeft() + "-" + blockInfo.getRangeRight()).build();
             if (!TextUtils.isEmpty(task.getRedirectLocation())) {
                 rangeRequest = rangeRequest.newBuilder().url(task.getRedirectLocation()).build();
@@ -58,37 +55,39 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
             bis = new BufferedInputStream(responseBody.byteStream());
 //            ParcelFileDescriptor pfd = ParcelFileDescriptor.open(
 //                    task.getFile(), ParcelFileDescriptor.parseMode("rw"));
-            raf = new RandomAccessFile(task.getFile(), "rwd");
+            raf = new RandomAccessFile(task.getTargetProvider().getTargetFile(), "rwd");
 //            fileChannel = fos.getChannel();
             fileChannel = raf.getChannel();
 //            fileChannel.position(blockInfo.getRangeLeft());
             raf.seek(blockInfo.getRangeLeft());
             bytebuffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, blockInfo.getRangeLeft(), blockInfo.getContentLength());
-            bufferedLength = new AtomicLong(0);
+            setBufferedLength(0);
             long byteRead = 0;
             readLength = 0;
-            byte[] b = new byte[8096];
+            byte[] b = new byte[getByteBufferSize()];
             while ((byteRead = bis.read(b)) != -1) {
                 if (task.isStoped()) {
-                    Util.i(TAG," ----found stop");
-                    task.getFlushRunnable().flush(this);
+                    Util.i(TAG, " ----found stop");
                     break;
                 }
-
-                if (getBufferedLength() + byteRead >= bufferMax) {
-                    task.getFlushRunnable().flush(this);
+                if (!DownloadCache.getInstance().isNetPolicyValid(task)) {
+                    throw new DownloadException(DownloadException.NETWORK_POLICY_ERROR, "invalid network state");
                 }
+
+
                 final long targetLength = readLength + byteRead;
                 if (targetLength > blockInfo.getContentLength()) {
                     byteRead = blockInfo.getContentLength() - readLength;
                     bytebuffer.put(b, 0, (int) byteRead);
-                    bufferedLength.addAndGet(byteRead);
                     readLength += byteRead;
+                    addAndGetBufferedLength(byteRead);
+                    notifyFetchData(byteRead);
                     break;
                 }
                 bytebuffer.put(b, 0, (int) byteRead);
-                bufferedLength.addAndGet(byteRead);
                 readLength += byteRead;
+                addAndGetBufferedLength(byteRead);
+                notifyFetchData(byteRead);
             }
 
             setIsReadByteFinished(true);
@@ -102,19 +101,13 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
                     }
                 }
             }
-            Util.i(TAG,"   parkThread");
+            Util.i(TAG, "   parkThread");
             parkThread();
 
-        } catch (Exception e){
+        } catch (Exception e) {
             task.setThrowable(e);
-        }
-        finally {
-            Util.i(TAG,"  finally");
-            try{
-                unmap();
-            }catch (IOException e){
-
-            }
+        } finally {
+            Util.i(TAG, "  finally");
             okhttp3.internal.Util.closeQuietly(fileChannel);
             okhttp3.internal.Util.closeQuietly(raf);
             okhttp3.internal.Util.closeQuietly(bis);
@@ -156,14 +149,14 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
 
 
     public void inspect(Response response) throws IOException {
-        System.out.println( getIndex() + "  response" +response.body().contentLength() +  " contentLength " +DownloadUtils.getExactContentLengthRangeFrom0(response.headers()) + " exactContentLengthRange " + blockInfo.getContentLength());
+        Util.d(TAG, getIndex() + "  response" + response.body().contentLength() + " contentLength " + DownloadUtils.getExactContentLengthRangeFrom0(response.headers()) + " exactContentLengthRange " + blockInfo.getContentLength());
         final BlockInfo blockInfo = getBlockInfo();
         final int code = response.code();
         final String newEtag = response.header(Util.ETAG);
 
         final ResumeFailedCause resumeFailedCause = DownloadPretreatment
                 .getPreconditionFailedCause(code, blockInfo.getCurrentOffset() != 0,
-                        task.getInfo(), newEtag);
+                        task.getInfo().getEtag(), newEtag);
         if (resumeFailedCause != null) {
             // resume failed, relaunch from beginning.
             throw new DownloadException(DownloadException.RESUME_ERROR, resumeFailedCause.toString());
@@ -190,23 +183,20 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
     }
 
     @Override
-    public void flush() throws IOException {
-        final long buffered = bufferedLength.get();
-        if (bytebuffer != null && (buffered > bufferMax || (getIsReadByteFinished() && buffered > 0))) {
+    public long flush() throws IOException {
+        final long buffered = getBufferedLength();
+        if (buffered > 0) {
             bytebuffer.force();
             raf.getFD().sync();
             blockInfo.increaseCurrentOffset(buffered);
-            bufferedLength.addAndGet(-buffered);
-            DownloadCache.getInstance().updateBlockInfo(blockInfo.getId(),blockInfo.getCurrentOffset());
-            task.getCallbackDispatcher().fetchProgress(task);
+            addAndGetBufferedLength(-buffered);
+            DownloadCache.getInstance().updateBlockInfo(blockInfo.getId(), blockInfo.getCurrentOffset());
+            return buffered;
         }
 
-
+        return 0;
     }
 
-    private void showLog(String info) {
-        Util.i("DownloadRunnable", info);
-    }
 
     /**
      * 显式回收MappedByteBuffer实例
@@ -217,12 +207,6 @@ public class DownloadRunnable extends AbstractDownloadRunnable {
             return;
         bytebuffer.clear();
         bytebuffer = null;
-    }
-
-
-    @Override
-    public long getBufferedLength() {
-        return bufferedLength.get();
     }
 
 

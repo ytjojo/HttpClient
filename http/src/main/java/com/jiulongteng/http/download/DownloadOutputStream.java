@@ -1,17 +1,15 @@
 package com.jiulongteng.http.download;
 
 import java.io.IOException;
+import java.io.OutputStream;
 
 
-public interface DownloadOutputStream {
-    void write(byte[] b, int off, int len) throws IOException;
+public abstract class DownloadOutputStream extends OutputStream {
 
-    void close() throws IOException;
+    abstract void flushAndSync() throws IOException;
 
-    void flushAndSync() throws IOException;
+    abstract void seek(long offset) throws IOException;
 
-    void seek(long offset) throws IOException;
-
-    void setLength(long newLength) throws IOException;
+    abstract void setLength(long newLength) throws IOException;
 
 }

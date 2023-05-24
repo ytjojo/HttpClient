@@ -1,6 +1,11 @@
 package com.jiulongteng.http.progress;
 
-import com.jiulongteng.http.entities.Progress;
+
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
+
+import com.jiulongteng.http.download.db.DownloadCache;
 
 import java.io.IOException;
 
@@ -19,8 +24,14 @@ public class ProgressRequestBody extends RequestBody {
     private final RequestBody requestBody;
     //进度回调接口
     private final ProgressListener callback;
+    private long lastCallbackProcessTime;
     //包装完成的BufferedSink
     private BufferedSink bufferedSink;
+    private Handler handler;
+
+    private long bytesWritten = 0L;
+    //总字节长度，避免多次调用contentLength()方法
+    private long contentLength = 0L;
 
     /**
      * 构造函数，赋值
@@ -31,6 +42,7 @@ public class ProgressRequestBody extends RequestBody {
     public ProgressRequestBody(RequestBody requestBody, ProgressListener callback) {
         this.requestBody = requestBody;
         this.callback = callback;
+        handler = DownloadCache.getInstance().isAndroid() ? new Handler(Looper.getMainLooper()) : null;
     }
 
     public RequestBody getRequestBody() {
@@ -93,9 +105,7 @@ public class ProgressRequestBody extends RequestBody {
     private Sink sink(Sink sink) {
         return new ForwardingSink(sink) {
             //当前写入字节数
-            long bytesWritten = 0L;
-            //总字节长度，避免多次调用contentLength()方法
-            long contentLength = 0L;
+
 
             int lastProgress; //上次回调进度
 
@@ -105,22 +115,57 @@ public class ProgressRequestBody extends RequestBody {
                 if (contentLength == 0) {
                     //获得contentLength的值，后续不再调用
                     contentLength = contentLength();
+                    lastCallbackProcessTime = nowMillis();
                 }
                 //增加当前写入的字节数
                 bytesWritten += byteCount;
 
                 int currentProgress = (int) ((bytesWritten * 100) / contentLength);
-                if (currentProgress <= lastProgress) return; //进度较上次没有更新，直接返回
                 lastProgress = currentProgress;
-                //回调, 更新进度
-                updateProgress(lastProgress, bytesWritten, contentLength);
+
+                if(isDispatchProcessMoment()){
+                    //回调, 更新进度
+                    updateProgress(lastProgress, bytesWritten, contentLength);
+                }
+
             }
         };
     }
 
     private void updateProgress(int progress, long currentSize, long totalSize) {
         if (callback == null) return;
-        Progress p = new Progress(progress, currentSize, totalSize);
-        callback.update(p);
+        if(handler != null){
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    callback.update(progress, currentSize, totalSize);
+                }
+            });
+        }else {
+            callback.update(progress, currentSize, totalSize);
+        }
+
+    }
+    private long nowMillis() {
+        if (DownloadCache.getInstance().isAndroid()) {
+            return SystemClock.uptimeMillis();
+        }
+        return System.nanoTime() / 1000000;
+    }
+
+    public boolean isDispatchProcessMoment() {
+
+        if(contentLength > 0 && contentLength == bytesWritten){
+            return true;
+        }
+
+        final long minInterval = DownloadCache.getInstance().getProgressDispatchInterval();
+        final long now = nowMillis();
+        return minInterval <= 0
+                || now - getLastDispatchProcessTime() >= minInterval;
+    }
+
+    public long getLastDispatchProcessTime() {
+        return lastCallbackProcessTime;
     }
 }

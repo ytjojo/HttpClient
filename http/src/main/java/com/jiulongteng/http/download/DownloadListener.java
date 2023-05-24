@@ -12,7 +12,7 @@ public interface DownloadListener {
 
     void fetchStart(@NonNull DownloadTask task, boolean isFromBeginning);
 
-    void fetchProgress(@NonNull DownloadTask task,int currentProgress, long currentSize, long contentLength);
+    void fetchProgress(@NonNull DownloadTask task,int currentProgress, long currentSize, long contentLength,long speed);
 
     void taskEnd(@NonNull DownloadTask task, @NonNull EndCause cause,
                  @Nullable Throwable realCause);

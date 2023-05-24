@@ -1,6 +1,10 @@
 package com.jiulongteng.http.progress;
 
-import com.jiulongteng.http.entities.Progress;
+
+import android.os.Handler;
+import android.os.Looper;
+
+import com.jiulongteng.http.download.db.DownloadCache;
 
 import java.io.IOException;
 
@@ -17,10 +21,16 @@ public class ProgressResponseBody extends ResponseBody {
     private final ResponseBody responseBody;
     private final ProgressListener progressListener;
     private BufferedSource bufferedSource;
+    private Handler handler;
+
+    private long totalBytesRead = 0L;
+    //总字节长度，避免多次调用contentLength()方法
+    private long contentLength = 0L;
 
     ProgressResponseBody(ResponseBody responseBody, ProgressListener progressListener) {
         this.responseBody = responseBody;
         this.progressListener = progressListener;
+        handler = DownloadCache.getInstance().isAndroid() ? new Handler(Looper.getMainLooper()) : null;
     }
 
     @Override
@@ -48,8 +58,7 @@ public class ProgressResponseBody extends ResponseBody {
 
     private Source source(Source source) {
         return new ForwardingSource(source) {
-            long totalBytesRead = 0L;
-            long contentLength = 0L;
+
 
             int lastProgress; //上次回调进度
 
@@ -65,7 +74,7 @@ public class ProgressResponseBody extends ResponseBody {
                 int currentProgress = (int) ((totalBytesRead * 100) / contentLength);
                 if (currentProgress <= lastProgress) return bytesRead; //进度较上次没有更新，直接返回
                 lastProgress = currentProgress;
-                progressListener.update(new Progress(currentProgress, totalBytesRead, contentLength));
+                progressListener.update(currentProgress, totalBytesRead, contentLength);
                 lastProgress = currentProgress;
                 return bytesRead;
             }

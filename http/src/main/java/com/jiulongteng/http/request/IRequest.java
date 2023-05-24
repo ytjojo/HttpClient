@@ -1,12 +1,17 @@
 package com.jiulongteng.http.request;
 
+import android.net.Uri;
+
 import androidx.lifecycle.LifecycleOwner;
 
 import com.google.gson.reflect.TypeToken;
 import com.jiulongteng.http.client.AbstractClient;
 import com.jiulongteng.http.entities.IResult;
+import com.jiulongteng.http.progress.ProgressListener;
 
+import java.io.File;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -87,6 +92,13 @@ public interface IRequest<T>{
 
     Object getPostBody();
     boolean isIResultResponse();
+
+    IRequest<T> uploadFile(File file, ProgressListener progressListener);
+
+    IRequest<T> uploadFile(ArrayList<File> files, ArrayList<ProgressListener> progressListeners);
+
+    IRequest<T> uploadFile(Uri uri, ProgressListener progressListener);
+    IRequest<T> uploadFiles(ArrayList<Uri> uriList, ArrayList<ProgressListener> progressListeners);
 
 
 

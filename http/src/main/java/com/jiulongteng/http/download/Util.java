@@ -9,12 +9,14 @@ import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.StatFs;
+import android.os.SystemClock;
 import android.provider.OpenableColumns;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.jiulongteng.http.download.db.DownloadCache;
 import com.jiulongteng.http.download.entry.BlockInfo;
 
 import java.io.File;
@@ -39,6 +41,10 @@ public class Util {
     public static final String RANGE = "Range";
     public static final String IF_MATCH = "If-Match";
     public static final String USER_AGENT = "User-Agent";
+
+    public static final String CONTENT_MD5 = "Content-MD5";
+
+    public static final String CONTENT_TYPE ="Content-Type";
 
     // response header fields.
     public static final String CONTENT_LENGTH = "Content-Length";
@@ -303,7 +309,7 @@ public class Util {
                 cursor.close();
             }
         }
-        return 0;
+        return -1;
     }
 
     public static boolean isNetworkAvailable(ConnectivityManager manager) {
@@ -384,6 +390,14 @@ public class Util {
             w("resetBlockIfDirty", "block is dirty so have to reset: " + info);
             info.resetBlock();
         }
+    }
+
+
+    public static long nowMillis() {
+        if (DownloadCache.getInstance().isAndroid()) {
+            return SystemClock.uptimeMillis();
+        }
+        return System.nanoTime() / 1000000;
     }
 
 

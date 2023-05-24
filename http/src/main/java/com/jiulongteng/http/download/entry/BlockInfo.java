@@ -83,7 +83,7 @@ public class BlockInfo {
     }
 
     @Override public String toString() {
-        return "[" + startOffset + ", " + getRangeRight() + ")" + "-current:" + currentOffset;
+        return "id = " + id +  "  [" + startOffset + " - " + getRangeRight() + ")" + "-  current:" + currentOffset;
     }
 
     public boolean isDone(){

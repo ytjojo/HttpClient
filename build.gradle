@@ -4,6 +4,13 @@ apply plugin: 'java'
 buildscript {
     ext.kotlin_version = '1.6.10'
     repositories {
+        maven{ url 'https://maven.aliyun.com/repository/google'}
+
+        maven{ url 'https://maven.aliyun.com/repository/gradle-plugin'}
+
+        maven{ url 'https://maven.aliyun.com/repository/public'}
+
+        maven{ url 'https://maven.aliyun.com/repository/jcenter'}
         jcenter()
         google()
 
@@ -21,6 +28,13 @@ buildscript {
 
 allprojects {
     repositories {
+        maven{ url 'https://maven.aliyun.com/repository/google'}
+
+        maven{ url 'https://maven.aliyun.com/repository/gradle-plugin'}
+
+        maven{ url 'https://maven.aliyun.com/repository/public'}
+
+        maven{ url 'https://maven.aliyun.com/repository/jcenter'}
         jcenter()
         // required to find the project's artifacts
         maven { url "https://jitpack.io" }
@@ -47,7 +61,9 @@ allprojects {
     }
     tasks.withType(Javadoc) {
         options.encoding = 'UTF-8'
+        enabled = false
     }
+
 
 }
 clean {
@@ -61,10 +77,10 @@ ext {
     // Sdk and tools
     minSdkVersion = 21
     targetSdkVersion = 28
-    compileSdkVersion = 29
+    compileSdkVersion = 30
     versionCode =1
     versionName ="1.0"
-    buildToolsVersion = '29.0.3'
+    buildToolsVersion = '30.0.2'
 
 
     retrofit = 'com.squareup.retrofit2:retrofit:2.3.0'
@@ -92,6 +108,9 @@ ext {
     lifecycle_livedata_ktx = "androidx.lifecycle:lifecycle-livedata-ktx:2.2.0"
     ifecycle_viewmodel_ktx = "androidx.lifecycle:lifecycle-viewmodel-ktx:2.2.0"
     lifecycle_service = 'androidx.lifecycle:lifecycle-service:2.3.0-beta01'
+
+    glide = 'com.github.bumptech.glide:glide:4.12.0'
+    glideProcessor = 'com.github.bumptech.glide:compiler:4.12.0'
 
 }
 

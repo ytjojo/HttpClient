@@ -1,13 +1,16 @@
 package com.jiulongteng.http.download.dispatcher;
 
 import android.os.Handler;
+import android.os.SystemClock;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.jiulongteng.http.download.DownloadListener;
 import com.jiulongteng.http.download.DownloadTask;
+import com.jiulongteng.http.download.SpeedCalculator;
 import com.jiulongteng.http.download.cause.EndCause;
+import com.jiulongteng.http.download.db.DownloadCache;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -18,13 +21,11 @@ public class CallbackDispatcher implements DownloadListener {
     AtomicLong lastCallbackProcessTime = new AtomicLong(0);
     AtomicLong lastOffset = new AtomicLong(0);
     Handler uiHandler;
+    private SpeedCalculator speedCalculator;
 
     public CallbackDispatcher(@NonNull Handler handler) {
         this.uiHandler = handler;
-    }
-
-    public CallbackDispatcher() {
-
+        speedCalculator = new SpeedCalculator();
     }
 
 
@@ -69,74 +70,90 @@ public class CallbackDispatcher implements DownloadListener {
         } else {
             task.getDownloadListener().fetchStart(task, isFromBeginning);
         }
-        lastCallbackProcessTime.set(System.currentTimeMillis());
+        lastCallbackProcessTime.set(nowMillis());
         lastOffset.set(task.getInfo().getTotalOffset());
+        speedCalculator.downloading(0);
+    }
+
+    private long nowMillis() {
+        if (DownloadCache.getInstance().isAndroid()) {
+            return SystemClock.uptimeMillis();
+        }
+        return System.nanoTime() / 1000000;
     }
 
     @Override
-    public void fetchProgress(@NonNull DownloadTask task, int currentProgress, long currentSize, long contentLength) {
+    public void fetchProgress(@NonNull DownloadTask task, int currentProgress, long currentSize, long contentLength, long speed) {
 
         if (uiHandler != null) {
             uiHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    task.getDownloadListener().fetchProgress(task, currentProgress, currentSize, contentLength);
+                    task.getDownloadListener().fetchProgress(task, currentProgress, currentSize, contentLength, speed);
                 }
             });
         } else {
-            task.getDownloadListener().fetchProgress(task, currentProgress, currentSize, contentLength);
+            task.getDownloadListener().fetchProgress(task, currentProgress, currentSize, contentLength, speed);
         }
 
     }
 
     @Override
     public void taskEnd(@NonNull DownloadTask task, @NonNull EndCause cause, @Nullable Throwable realCause) {
+        speedCalculator.endTask();
+        notifyFetchProgress(task);
         if (uiHandler != null) {
             uiHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    if (cause == EndCause.COMPLETED && realCause == null) {
-                        //100%
-                        fetchProgress(task);
-                    }
+
                     task.getDownloadListener().taskEnd(task, cause, realCause);
                 }
             });
         } else {
-            if (cause == null && realCause == null) {
-                //100%
-                fetchProgress(task);
-            }
             task.getDownloadListener().taskEnd(task, cause, realCause);
         }
     }
 
-    public void fetchProgress(@NonNull DownloadTask task) {
-        if (isFetchProcessMoment() || task.isSuccess()) {
-            final long lastTime = lastCallbackProcessTime.get();
-            final long currentTime = System.currentTimeMillis();
-
-            long offset = task.getInfo().getTotalOffset();
-            if (offset == lastOffset.get()) {
-                return;
-            }
-            long contentLength = task.getInfo().getTotalLength();
-            int currentProgress = (int) (offset * 100 / contentLength);
-            this.fetchProgress(task, currentProgress, offset, contentLength);
-            long timeCost = currentTime - lastTime;
-            float speed = (offset - lastOffset.get()) / timeCost;
-            System.out.println("speed" + speed);
-            lastOffset.set(offset);
-            lastCallbackProcessTime.set(currentTime);
+    public void fetchProgress(@NonNull DownloadTask task, long increaseBytes) {
+        speedCalculator.downloading(increaseBytes);
+        lastOffset.addAndGet(increaseBytes);
+        if (isFetchProcessMoment() || task.getTaskStatus() != DownloadCache.RUNNING) {
+           notifyFetchProgress(task);
         }
 
+    }
+    private void notifyFetchProgress(DownloadTask task){
+        final long currentTime = nowMillis();
+        long offset = lastOffset.get();
+        long contentLength = task.getInfo().getTotalLength();
+        int currentProgress = (int) (offset * 100 / contentLength);
+        dispatchSpeed(task);
+        this.fetchProgress(task, currentProgress, offset, contentLength, speedCalculator.getBytesPerSecondFromBegin());
+        lastCallbackProcessTime.set(currentTime);
+    }
+
+    private void dispatchSpeed(final DownloadTask task) {
+        if (task.getSpeedListener() != null) {
+            if (uiHandler != null) {
+                uiHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        task.getSpeedListener().onProgress(task, speedCalculator);
+                    }
+                });
+            } else {
+                task.getSpeedListener().onProgress(task, speedCalculator);
+            }
+
+        }
     }
 
 
     public boolean isFetchProcessMoment() {
 
-        final long minInterval = 100;
-        final long now = System.currentTimeMillis();
+        final long minInterval = DownloadCache.getInstance().getProgressDispatchInterval();
+        final long now = nowMillis();
         return minInterval <= 0
                 || now - getLastCallbackProcessTime() >= minInterval;
     }

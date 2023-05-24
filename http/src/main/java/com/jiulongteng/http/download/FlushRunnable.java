@@ -1,14 +1,16 @@
 package com.jiulongteng.http.download;
 
+import com.jiulongteng.http.download.db.DownloadCache;
+
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 
@@ -18,122 +20,134 @@ public class FlushRunnable implements Runnable {
     private static final ExecutorService FILE_IO_EXECUTOR = new ThreadPoolExecutor(0,
             Integer.MAX_VALUE,
             60, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(),
-            Util.threadFactory("OkDownload file io", false));
+            Util.threadFactory("Download file io", false));
 
     private DownloadTask task;
-    ConcurrentHashMap<Integer,AbstractDownloadRunnable> downloadRunnableMap = new ConcurrentHashMap<>();
-    LinkedBlockingQueue<Runnable> blockingQueue = new LinkedBlockingQueue<>();
-    int finishSize=0;
-    AtomicReference<Thread> parkThreadRef =new AtomicReference(null);
+    ConcurrentHashMap<Integer, AbstractDownloadRunnable> downloadRunnableMap = new ConcurrentHashMap<>();
+    AtomicReference<Thread> parkThreadRef = new AtomicReference(null);
 
     private volatile Future syncFuture;
 
-    AtomicBoolean isDone = new AtomicBoolean(false);
+    AtomicLong allNoSyncLength = new AtomicLong(0);
 
+    HashSet<Integer> finishedIndex = new HashSet<>();
     Runnable finishRunnable;
-    public FlushRunnable(DownloadTask task,Runnable finishRunnable) {
+    long syncBufferIntervalMills = 2000;
+    long nextParkMills = syncBufferIntervalMills;
+    long lastSyncTimestamp;
+
+    public FlushRunnable(DownloadTask task, Runnable finishRunnable) {
         this.task = task;
         this.finishRunnable = finishRunnable;
     }
 
     @Override
     public void run() {
-        flushAll();
         parkThreadRef.set(Thread.currentThread());
-        while (true){
-            parkThread();
+        flushAll();
+        nextParkMills = syncBufferIntervalMills;
+        while (true) {
+            parkThread(nextParkMills);
             flushAll();
-            if(task.isStoped()){
-                Util.i(TAG,"   loop " + finishSize);
+            if (task.isStoped()) {
+                Util.i(TAG, downloadRunnableMap.size() + " all size " + task.getRunnableSize() + "   loop " + finishedIndex.size());
             }
-            if(task.getRunnableSize() == finishSize){
-                if(finishRunnable!= null){
+            if (task.getRunnableSize() == finishedIndex.size()) {
+                if (finishRunnable != null) {
                     FILE_IO_EXECUTOR.submit(finishRunnable);
                 }
-                Util.i(TAG, " finishSize ");
+                Util.i(TAG, " finishSize " + finishedIndex.size());
                 break;
             }
         }
     }
 
-    private void wakeup(){
-        if(syncFuture == null){
-            synchronized (this){
-                if(syncFuture == null){
+    private void wakeup() {
+        if (syncFuture == null) {
+            synchronized (this) {
+                if (syncFuture == null) {
                     syncFuture = executeSyncRunnableAsync();
                 }
             }
         }
         Thread thread = parkThreadRef.get();
-        if(thread != null){
+        if (thread != null) {
             unparkThread(thread);
 
         }
 
     }
 
-    private Future executeSyncRunnableAsync(){
+    private Future executeSyncRunnableAsync() {
         return FILE_IO_EXECUTOR.submit(this);
     }
 
-    private void flushAll(){
-
-        if(isDone.get()){
-            while (true){
-                Runnable runnable = blockingQueue.poll();
-                if(runnable != null){
-                    runnable.run();
-                }
-
-                if(task.getRunnableSize() == finishSize){
-                    break;
-                }else {
-                }
+    private void flushAll() {
+        boolean needSyncBuffer = allNoSyncLength.get() >= DownloadCache.getInstance().getSyncBufferSize();
+        long allIncreaseLength = 0;
+        boolean isReadByteFinished = false;
+        boolean synced = false;
+        for (int i = 0; i < task.getRunnableSize(); i++) {
+            AbstractDownloadRunnable downloadRunnable = downloadRunnableMap.get(i);
+            if (downloadRunnable != null) {
+                isReadByteFinished |= downloadRunnable.getIsReadByteFinished();
             }
-        }else {
-            for (int i = 0; i < task.getRunnableSize(); i++) {
-                AbstractDownloadRunnable downloadRunnable = downloadRunnableMap.remove(i);
-                if(downloadRunnable != null){
-                    try {
-                        downloadRunnable.flush();
-                    } catch (IOException e) {
-                        e.printStackTrace();
+        }
+        needSyncBuffer = resetNextParkMills(needSyncBuffer);
+        for (int i = 0; i < task.getRunnableSize(); i++) {
+            AbstractDownloadRunnable downloadRunnable = downloadRunnableMap.remove(i);
+            if (downloadRunnable != null) {
+                try {
+                    if (needSyncBuffer || isReadByteFinished) {
+                        synced = true;
+                        long noSyncLength = downloadRunnable.flush();
+                        allIncreaseLength += noSyncLength;
                     }
-
+                } catch (IOException e) {
+                    Util.e(TAG, "buffered " + downloadRunnable.getBufferedLength() + " AbstractDownloadRunnable flush error index = " + downloadRunnable.getIndex(), e);
+                    e.printStackTrace();
+                } finally {
+                    if (downloadRunnable.getIsReadByteFinished()) {
+                        finishedIndex.add(i);
+                        downloadRunnable.unPark();
+                        Util.i(TAG, "  finishSize = " + finishedIndex.size() + "  index = " + downloadRunnable.getIndex());
+                    }
                 }
-
             }
         }
 
-
+        if (synced) {
+            allNoSyncLength.addAndGet(-allIncreaseLength);
+            Util.i(TAG,"sync interval  = " +( Util.nowMillis() - lastSyncTimestamp));
+            lastSyncTimestamp = Util.nowMillis();
+        }
 
     }
-    public void flush(AbstractDownloadRunnable downloadRunnable){
-        downloadRunnableMap.put(downloadRunnable.getIndex(),downloadRunnable);
-        wakeup();
-    }
 
-    public void done(AbstractDownloadRunnable downloadRunnable){
-        isDone.set(true);
-        blockingQueue.offer(new Runnable() {
-            @Override
-            public void run() {
-                try{
-                    downloadRunnable.flush();
-
-                }catch (IOException e){
-
-                }finally {
-                    finishSize++;
-                    downloadRunnable.unPark();
-                    Util.i(TAG,"  finishSize = "+finishSize + "  done " + downloadRunnable.getIndex());
-                }
-
+    private boolean resetNextParkMills(boolean needSyncBuffer){
+        if (needSyncBuffer) {
+            nextParkMills = getNextParkMillisecond();
+            if (nextParkMills > 0) {
+                return false;
+            }else {
+                nextParkMills = syncBufferIntervalMills;
             }
-        });
+        } else {
+            nextParkMills = syncBufferIntervalMills;
+
+        }
+        return needSyncBuffer;
+    }
+
+    public void flush(AbstractDownloadRunnable downloadRunnable, long byteRead) {
+        downloadRunnableMap.put(downloadRunnable.getIndex(), downloadRunnable);
+        allNoSyncLength.addAndGet(byteRead);
         wakeup();
+    }
 
-
+    public void done(AbstractDownloadRunnable downloadRunnable) {
+        downloadRunnableMap.put(downloadRunnable.getIndex(), downloadRunnable);
+        wakeup();
     }
 
     // convenient for test
@@ -151,4 +165,8 @@ public class FlushRunnable implements Runnable {
     }
 
 
+    long getNextParkMillisecond() {
+        long farToLastSyncMills = Util.nowMillis() - lastSyncTimestamp;
+        return syncBufferIntervalMills - farToLastSyncMills;
+    }
 }

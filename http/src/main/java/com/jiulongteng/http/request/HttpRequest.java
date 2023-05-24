@@ -1,5 +1,7 @@
 package com.jiulongteng.http.request;
 
+import android.net.Uri;
+
 import androidx.lifecycle.LifecycleOwner;
 
 import com.google.gson.internal.$Gson$Types;
@@ -10,17 +12,24 @@ import com.jiulongteng.http.converter.GsonResponseBodyConverter;
 import com.jiulongteng.http.entities.IResult;
 import com.jiulongteng.http.entities.StandardResult;
 import com.jiulongteng.http.exception.ExceptionHandle;
+import com.jiulongteng.http.progress.ProgressListener;
+import com.jiulongteng.http.progress.ProgressRequestBody;
 import com.jiulongteng.http.util.CollectionUtils;
 import com.jiulongteng.http.util.LogUtil;
+import com.jiulongteng.http.util.TextUtils;
 import com.jiulongteng.http.util.TypeUtil;
+import com.jiulongteng.http.util.UriUtil;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.HostnameVerifier;
@@ -34,8 +43,10 @@ import io.reactivex.rxjava3.core.Observer;
 import io.reactivex.rxjava3.functions.Function;
 import io.reactivex.rxjava3.functions.Predicate;
 import io.reactivex.rxjava3.schedulers.Schedulers;
+import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
+import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit2.CallAdapter;
 import retrofit2.Converter;
@@ -72,6 +83,8 @@ public class HttpRequest<T> implements IRequest<T> {
     int retryCount;
     int currentRetryCount;
     long retryInterval;
+
+    private boolean isMultipart;
     private Predicate<Throwable> retryPredicate;
 
     private Class<? extends IResult> boundaryResultClass;
@@ -143,8 +156,65 @@ public class HttpRequest<T> implements IRequest<T> {
             multiparts = new ArrayList<>();
         }
         multiparts.add(part);
+        isMultipart = true;
         return this;
     }
+
+    @Override
+    public IRequest<T> uploadFile(File file, ProgressListener progressListener) {
+        String fileName = file.getName();
+        // 通过文件名获取文件类型
+        String contentType = URLConnection.getFileNameMap().getContentTypeFor(fileName);
+        if (TextUtils.isEmpty(contentType)) {
+            // 使用通用文件类型 xxx.*
+            contentType = "application/octet-stream";
+        }
+        // 第一个参数为文件的 key, 即 partName,需要和服务器约定
+        // 对应的请求头: Content-Disposition: form-data; name="file$i"; filename="xxx"
+        addMultipart(MultipartBody.Part.createFormData("file", fileName,
+                new ProgressRequestBody(
+                        RequestBody.create(MediaType.parse(contentType), file),
+                        progressListener)));
+        return this;
+    }
+
+    @Override
+    public IRequest<T> uploadFile(Uri uri, ProgressListener progressListener) {
+
+        // 第一个参数为文件的 key, 即 partName,需要和服务器约定
+        // 对应的请求头: Content-Disposition: form-data; name="file$i"; filename="xxx"
+        addMultipart(UriUtil.asPart(uri,"file",null,progressListener));
+        return this;
+    }
+
+    @Override
+    public IRequest<T> uploadFiles(ArrayList<Uri> files, ArrayList<ProgressListener> progressListeners) {
+        int index = 0;
+        for (Uri uri : files) {
+            ProgressListener progressListener = null;
+            if (progressListeners != null && index < progressListeners.size()) {
+                progressListener = progressListeners.get(index);
+            }
+            uploadFile(uri, progressListener);
+            index++;
+        }
+        return this;
+    }
+
+    @Override
+    public IRequest<T> uploadFile(ArrayList<File> files, ArrayList<ProgressListener> progressListeners) {
+        int index = 0;
+        for (File file : files) {
+            ProgressListener progressListener = null;
+            if (progressListeners != null && index < progressListeners.size()) {
+                progressListener = progressListeners.get(index);
+            }
+            uploadFile(file, progressListener);
+            index++;
+        }
+        return this;
+    }
+
 
     @Override
     public IRequest<T> setBoundaryResultClass(Class<? extends IResult> boundaryResultClass) {
@@ -171,6 +241,7 @@ public class HttpRequest<T> implements IRequest<T> {
         isRebuildRetrofit = true;
         return this;
     }
+
 
     @Override
     public IRequest<T> addHeader(String key, String value) {
@@ -283,8 +354,12 @@ public class HttpRequest<T> implements IRequest<T> {
         if (observable != null) {
             return observable;
         }
+        if (params == null) {
+            params = new HashMap<>();
+        }
         switch (httpMethod) {
             case GET:
+
                 HashMap<String, String> querys = new HashMap<>();
                 for (Map.Entry<String, Object> entry : params.entrySet()) {
                     querys.put(entry.getKey(), entry.getValue().toString());
@@ -310,21 +385,72 @@ public class HttpRequest<T> implements IRequest<T> {
 
                 break;
             case POSTFORM:
-                if (!CollectionUtils.isEmpty(params)) {
-                    if (multiparts == null) {
-                        multiparts = new ArrayList<>();
+
+                if (isMultipart) {
+                    if (!CollectionUtils.isEmpty(params)) {
+                        if (multiparts == null) {
+                            multiparts = new ArrayList<>();
+                        }
+                        for (Map.Entry<String, Object> entry : params.entrySet()) {
+                            MultipartBody.Part part = MultipartBody.Part.createFormData(entry.getKey(), entry.getValue().toString());
+                            multiparts.add(part);
+                        }
                     }
+                    getService(AbstractClient.Service.class).multipartPost(getMergedHeaders(), relativeUrl, multiparts);
+                } else {
+                    HashMap<String, String> fieldMap = new HashMap<>();
                     for (Map.Entry<String, Object> entry : params.entrySet()) {
-                        MultipartBody.Part part = MultipartBody.Part.createFormData(entry.getKey(), entry.getValue().toString());
-                        multiparts.add(part);
+                        fieldMap.put(entry.getKey(), entry.getValue().toString());
                     }
+                    getService(AbstractClient.Service.class).postFormUrlEncoded(getMergedHeaders(), relativeUrl, fieldMap);
                 }
-                getService(AbstractClient.Service.class).multipartPost(getMergedHeaders(), relativeUrl, multiparts);
+
 
                 break;
             case DELETE:
+                querys = new HashMap<>();
+                for (Map.Entry<String, Object> entry : params.entrySet()) {
+                    querys.put(entry.getKey(), entry.getValue().toString());
+                }
+                observable = getService(AbstractClient.Service.class).
+                        delete(getMergedHeaders(), AbstractClient.getUrl(
+                                retrofit.baseUrl().toString(), relativeUrl, querys))
+                        .map(httpClient.map(getRetrofit(), responseType, boundaryResultClass));
                 break;
             case PUT:
+                if (isMultipart) {
+                    if (!CollectionUtils.isEmpty(params)) {
+                        if (multiparts == null) {
+                            multiparts = new ArrayList<>();
+                        }
+                        for (Map.Entry<String, Object> entry : params.entrySet()) {
+                            MultipartBody.Part part = MultipartBody.Part.createFormData(entry.getKey(), entry.getValue().toString());
+                            multiparts.add(part);
+                        }
+                    }
+                    getService(AbstractClient.Service.class).put(getMergedHeaders(), relativeUrl, multiparts);
+                } else {
+                    HashMap<String, String> fieldMap = new HashMap<>();
+                    for (Map.Entry<String, Object> entry : params.entrySet()) {
+                        fieldMap.put(entry.getKey(), entry.getValue().toString());
+                    }
+                    observable = getService(AbstractClient.Service.class).
+                            put(getMergedHeaders(), relativeUrl, fieldMap)
+                            .map(httpClient.map(getRetrofit(), responseType, boundaryResultClass));
+                }
+
+                break;
+            case HEAD:
+                querys = new HashMap<>();
+                for (Map.Entry<String, Object> entry : params.entrySet()) {
+                    querys.put(entry.getKey(), entry.getValue().toString());
+                }
+                observable = getService(AbstractClient.Service.class).
+                        head(getMergedHeaders(), AbstractClient.getUrl(
+                                retrofit.baseUrl().toString(), relativeUrl, querys))
+                        .map(httpClient.map(getRetrofit(), responseType, boundaryResultClass));
+
+
                 break;
             default:
                 break;
@@ -419,7 +545,7 @@ public class HttpRequest<T> implements IRequest<T> {
     }
 
     public static enum HttpMethod {
-        GET, POST, POSTFORM, DELETE, PUT
+        GET, POST, POSTFORM, DELETE, PUT, HEAD
     }
 
     @Override

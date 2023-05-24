@@ -21,7 +21,7 @@ public interface BreakpointStore {
     /**
      * 得到下载具体信息
      */
-    public List<BlockInfo> getBlockInfo(BreakpointInfo info);
+    public List<BlockInfo> loadBlockInfo(BreakpointInfo info);
 
     /**
      * 更新数据库中的下载信息
@@ -36,7 +36,9 @@ public interface BreakpointStore {
 
     public  void saveDownloadInfo(BreakpointInfo info);
 
-    public BreakpointInfo getDownloadInfo(String url);
+    public BreakpointInfo loadDownloadInfo(String url);
 
     public void updateDownloadInfo(BreakpointInfo info);
+
+    List<BreakpointInfo> loadAllDownloadInfo();
 }

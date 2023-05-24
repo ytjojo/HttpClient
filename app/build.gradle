@@ -131,10 +131,13 @@ dependencies {
     api ifecycle_viewmodel_ktx
     api lifecycle_service
 
+    api glide
+    annotationProcessor glideProcessor
+
 
 }
 configurations {
-    androidTestCompile.exclude group: 'com.android.support', module: 'support-v4'
+    androidTestImplementation.exclude group: 'com.android.support', module: 'support-v4'
 }
 def propFile = project.rootProject.file('signing.properties');
 if (propFile.exists()) {

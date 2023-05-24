@@ -10,11 +10,14 @@ import com.jiulongteng.http.client.IHttpClientBuilder
 import com.jiulongteng.http.converter.GsonResponseBodyConverter
 import com.jiulongteng.http.croutines.*
 import com.jiulongteng.http.entities.IResult
+import com.jiulongteng.http.progress.createUploadProgressListener
 import com.jiulongteng.http.rx.SimpleObserver
 import com.jiulongteng.http.util.LogUtil
 import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import kotlinx.coroutines.*
+import okhttp3.MultipartBody
 import okhttp3.ResponseBody
 import org.junit.Test
 import retrofit2.Converter
@@ -23,6 +26,7 @@ import retrofit2.http.GET
 import retrofit2.http.HeaderMap
 import retrofit2.http.Url
 import java.io.File
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -109,18 +113,23 @@ class CoroutinesTest {
                 suspendCancellableCoroutine<Any?> { continuation ->
 
 
-                    Observable.just(1)
-                            .subscribeOn(Schedulers.io())
-                            .delay(1000L, TimeUnit.MILLISECONDS)
-                            .subscribe(object : SimpleObserver<Int>() {
-                                override fun onNext(t: Int?) {
-                                    continuation.resume(t)
-                                }
+                    try{
+                        Observable.just(1)
+                                .subscribeOn(Schedulers.io())
+                                .delay(1000L, TimeUnit.MILLISECONDS)
+                                .subscribe(object : SimpleObserver<Int>() {
+                                    override fun onNext(t: Int?) {
+                                        continuation.resume(t)
+                                    }
 
-                                override fun onError(e: Throwable?) {
-//                                    continuation.resumeWithException(e)
-                                }
-                            })
+                                    override fun onError(e: Throwable) {
+                                        continuation.resumeWithException(e)
+                                    }
+                                })
+                    } catch (t: Throwable) {
+                        continuation.resumeWithException(t)
+                    }
+
                 }
             }
             val s2 = GlobalScope.async {
@@ -234,7 +243,7 @@ class CoroutinesTest {
         runBlocking {
              val ss = abstractHttpClientFactory?.defaultClient?.get("http://api.k780.com/?app=weather.today&weaid=1&appkey=10003&sign=b59bc3ef6191eb9f747dd4e83c99f2a4&format=json")
                 ?.setBoundaryResultClass(HttpTest.SuccResult::class.java)
-                ?.awaitAs<HttpTest.Weather>()
+                ?.castAwait<HttpTest.Weather>()
             System.out.println("${Thread.currentThread().id}  ${Thread.currentThread().name} async   ${ss?.citynm}")
 
             try {
@@ -259,7 +268,7 @@ class CoroutinesTest {
 
                 val ss:HashMap<String,String>? = abstractHttpClientFactory?.defaultClient?.get("http://api.k780.com/?app=weather.today&weaid=1&appkey=10003&sign=b59bc3ef6191eb9f747dd4e83c99f2a4&format=json")
                         ?.setBoundaryResultClass(HttpTest.SuccResult::class.java)
-                        ?.awaitAs<HashMap<String,String>>()
+                        ?.castAwait<HashMap<String,String>>()
                 System.out.println("${Thread.currentThread().id}  ${Thread.currentThread().name} async   ${ss?.get("citynm")}")
                 ss
             }
@@ -315,7 +324,7 @@ class CoroutinesTest {
 
                 val deferred = abstractHttpClientFactory?.defaultClient?.get("http://api.k780.com/?app=weather.today&weaid=1&appkey=10003&sign=b59bc3ef6191eb9f747dd4e83c99f2a4&format=json")
                         ?.setBoundaryResultClass(HttpTest.SuccResult::class.java)
-                        ?.asyncAs<HttpTest.Weather>(this)
+                        ?.castAsync<HttpTest.Weather>(this)
                 val ss = deferred?.await()
                 ss
             }
@@ -344,9 +353,12 @@ class CoroutinesTest {
             val job = SupervisorJob();
             val ss = abstractHttpClientFactory?.defaultClient?.get("http://api.k780.com/?app=weather.today&weaid=1&appkey=10003&sign=b59bc3ef6191eb9f747dd4e83c99f2a4&format=json")
                     ?.setBoundaryResultClass(HttpTest.SuccResult::class.java)
-                    ?.asyncAs<HttpTest.Weather>(this,job)
+                    ?.castAsync<HttpTest.Weather>(this,job)
             LogUtil.logThread("after async")
-            job.cancel("我取消了")
+            Observable.just(1).delay(120,TimeUnit.MILLISECONDS)
+                    .subscribe {
+                        job.cancel("我取消了")
+                    }
             try {
                 val result = ss?.await()
                 LogUtil.logThread("after await")
@@ -358,6 +370,74 @@ class CoroutinesTest {
 
         }
 
+    }
+
+
+    @Test
+    fun test11() {
+        abstractHttpClientFactory = init()
+        LogUtil.logThread("start")
+        runBlocking {
+            val s1 = GlobalScope.async {
+
+                val deferred = abstractHttpClientFactory?.defaultClient?.postForm("http://live.xiangchang.com/api/user/upload_pic")
+                        ?.addMultipart(MultipartBody.Part.createFormData("origin","3"))
+                        ?.addMultipart(MultipartBody.Part.createFormData("type","3"))
+                        ?.setBoundaryResultClass(HttpTest.SuccResult::class.java)
+                        ?.uploadFile(File("")) { progress, currentSize, totalSize ->
+
+                        }
+                        ?.castAsync<HttpTest.Weather>(this)
+                val ss = deferred?.await()
+                ss
+            }
+
+            try {
+                val result = s1.await()
+                System.out.println("${Thread.currentThread().id}  ${Thread.currentThread().name}   ${result?.citynm}")
+                result
+            }catch (e :Throwable){
+                System.out.println(e.message)
+            }
+
+        }
+
+    }
+
+    @Test
+    fun testLambda(){
+        val countDownLatch = CountDownLatch(1)
+        val job = SupervisorJob()
+        val scope = CoroutineScope(Dispatchers.IO + job)
+       val progressListener=  createUploadProgressListener( scope){ progress, currentSize, totalSize ->
+           LogUtil.logThread("onpregress$progress")
+           if(progress == 100){
+               countDownLatch.countDown()
+           }
+
+        }
+        Observable.interval(0,1000,TimeUnit.MICROSECONDS)
+                .subscribe(object: SimpleObserver<Long>() {
+                    override fun onNext(t: Long?) {
+                        progressListener.update(t!!.toInt(),100,100)
+                        LogUtil.logThread("onNext$t")
+                        if(t == 60L){
+                            job.cancel("我取消了")
+                        }
+                        if(t == 100L){
+                            disposable.dispose()
+                        }
+                    }
+
+                    override fun onError(e: Throwable?) {
+                    }
+
+                    override fun onSubscribe(d: Disposable) {
+                        super.onSubscribe(d)
+                    }
+
+                })
+        countDownLatch.await()
     }
 
 

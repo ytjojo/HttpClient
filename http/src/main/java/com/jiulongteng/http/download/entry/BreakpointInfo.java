@@ -201,7 +201,7 @@ public class BreakpointInfo {
     }
 
     public boolean isSameFrom(DownloadTask task) {
-        if (!parentFile.equals(task.getParentFile())) {
+        if (!parentFile.equals(task.getTargetProvider().getParentFile())) {
             return false;
         }
 
@@ -234,7 +234,7 @@ public class BreakpointInfo {
         if (blockCount <= 0) return false;
         if (info.isChunked()) return false;
         if (info.getFile() == null) return false;
-        final File fileOnTask = task.getFile();
+        final File fileOnTask = task.getTargetProvider().getTargetFile();
         if (!info.getFile().equals(fileOnTask)) return false;
         if (info.getFile().length() > info.getTotalLength()) return false;
 
@@ -266,4 +266,11 @@ public class BreakpointInfo {
     public List<BlockInfo> getBlockInfoList() {
         return blockInfoList;
     }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
+
+
+
 }

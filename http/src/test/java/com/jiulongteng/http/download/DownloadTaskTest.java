@@ -5,6 +5,7 @@ import androidx.annotation.Nullable;
 
 import com.jiulongteng.http.download.cause.EndCause;
 import com.jiulongteng.http.download.db.DownloadCache;
+import com.jiulongteng.http.rx.SimpleObserver;
 
 import junit.framework.TestCase;
 
@@ -13,6 +14,7 @@ import org.junit.Test;
 import java.io.File;
 import java.util.concurrent.CountDownLatch;
 
+import io.reactivex.rxjava3.functions.Consumer;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 
@@ -52,7 +54,7 @@ public class DownloadTaskTest extends TestCase {
 
             }
         });
-        task.setDownloadListener(false, new DownloadListener() {
+        task.setDownloadListener( new DownloadListener() {
             @Override
             public void taskStart(@NonNull DownloadTask task) {
                 System.out.println("taskStart");
@@ -67,27 +69,38 @@ public class DownloadTaskTest extends TestCase {
             @Override
             public void fetchStart(@NonNull DownloadTask task, boolean isFromBeginning) {
                 System.out.println("fetchStart");
+
+
             }
 
             @Override
-            public void fetchProgress(@NonNull DownloadTask task, int currentProgress, long currentSize, long contentLength) {
-                System.out.println("fetchProgress" + currentProgress + " currentSize "+ currentSize + " contentLength " + contentLength);
-                if(currentProgress > 10){
-                    System.out.println("----------stop");
-                    task.stop();
-                    stop = System.currentTimeMillis();
-                    System.out.println("----------after stop");
-                }
+            public void fetchProgress(@NonNull DownloadTask task, int currentProgress, long currentSize, long contentLength,long speed) {
+                System.out.println("fetchProgress" + currentProgress + " currentSize "+ currentSize + " contentLength " + contentLength + " speed " +speed);
+//                if(currentProgress > 10){
+//                    task.stop();
+//                    stop = System.currentTimeMillis();
+//                    System.out.println("----------after stop");
+//                }
             }
 
             @Override
             public void taskEnd(@NonNull DownloadTask task, @NonNull EndCause cause, @Nullable Throwable realCause) {
                 if(realCause != null){
-//                    realCause.printStackTrace();
+                    realCause.printStackTrace();
                 }
                 System.out.println("taskEnd  stop =" + (System.currentTimeMillis()   - stop)  + "  total = " +  + (System.currentTimeMillis() - start));
             }
         });
-        DownloadCache.getInstance().add(task);
+        task.setSpeedListener(new SpeedListener() {
+            @Override
+            public void onProgress(DownloadTask task, SpeedCalculator speedCalculator) {
+                System.out.println(speedCalculator.getInstantBytesPerSecondAndFlush() +  " speed " + speedCalculator.getBytesPerSecondFromBegin());
+            }
+
+        });
+
+        DownloadCache.getInstance().enqueueInternal(task);
     }
+
+
 }

@@ -287,7 +287,7 @@ public class DownloadUtils {
     }
 
 
-    public static void createFile(File file, long length) throws IOException{
+    public static void allocateLength(File file, long length) throws IOException{
         RandomAccessFile r = null;
         try {
             r = new RandomAccessFile(file, "rw");
